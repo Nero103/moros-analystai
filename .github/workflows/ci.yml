@@ -29,6 +29,11 @@ jobs:
        - name: Check Python Syntax
          run: |
           python -m compileall .
+       
+       - name: Rune tests
+         run: |
+          pytest
+
 
 
 
