@@ -1,14 +1,37 @@
 # ⬢ Moros AnalystAI
 
+[![Moros AnalystAI CI](https://github.com/Nero103/analystai/actions/workflows/ci.yml/badge.svg)](https://github.com/Nero103/analystai/actions/workflows/ci.yml)
+
 Transform Data into Decisions.
 
 AI-Powered Business & Document Intelligence
 
 ![AnalystAI Home Page](assets/analystai-home.png)
 
-AnalystAI is a local AI-powered data analysis tool that transforms CSV files into structured business insights using Streamlit and Ollama.
+Moros AnalystAI is a local AI-powered data analysis tool that transforms CSV files into structured business insights using Streamlit and Ollama.
 
 It allows users to upload datasets, ask questions in natural language, and receive AI-generated analyst-style reports with downloadable outputs.
+
+## Development Status
+
+Current Version: **v4.0 (In Development)**
+
+### Completed
+- ✅ CSV dataset analysis
+- ✅ PDF document analysis
+- ✅ Executive AI reporting
+- ✅ Evidence-backed responses
+- ✅ Confidence reporting
+- ✅ GitHub Actions Continuous Integration (CI)
+- ✅ Automated syntax validation
+- ✅ Automated testing with pytest
+
+### Planned
+- 🚧 Excel (.xlsx) support
+- 🚧 Word (.docx) support
+- 🚧 Automatic chart generation
+- 🚧 Enhanced structured data retrieval
+- 🚧 Expanded automated test coverage
 
 ## Features
 
@@ -31,7 +54,7 @@ It allows users to upload datasets, ask questions in natural language, and recei
 * Business-focused prompt engineering
 * Supports multiple local AI models
 
-### 🖥️ Modern Dashboard
+### Modern Dashboard
 * Professional dark theme
 * Two-column analysis workspace
 * Executive report formatting
@@ -39,7 +62,7 @@ It allows users to upload datasets, ask questions in natural language, and recei
 * Processing time metrics
 * Download analysis as a text report
 
-### 🏗️ Software Architecture
+### Software Architecture
 * Modular Python architecture
 * Separate AI engine
 * PDF processing utilities
@@ -56,28 +79,16 @@ It allows users to upload datasets, ask questions in natural language, and recei
 * PyPDF
 * Git & GitHub
 
-## Project Status
+## Development Stack
 
-Current Version: **v3.0**
-
-### Completed
-
-* CSV analysis
-* PDF analysis
-* Natural language Q&A
-* Executive report generation
-* Modular architecture
-* Professional dashboard UI
-
-### Planned (Version 4)
-
-* Excel (.xlsx) and Word (.docx) support
-* Automatic charts, trend detection, and anomaly detection
-* Long-document and multi-document analysis
-* Digital humanities support for historical, literary, cultural, and archival research
-* Theme, entity, and textual-pattern comparison across document collections
-* Metadata and structured-data analysis for humanities projects
-* Privacy-conscious local AI workflows for university research
+* **Language:** Python
+* **Framework:** Streamlit
+* **AI:** Ollama + Qwen 2.5
+* **Data:** Pandas
+* **Documents:** PyPDF
+* **Testing:** pytest
+* **Version Control:** Git & GitHub
+* **CI:** GitHub Actions
 
 ## Why I Built Moros
 
@@ -139,4 +150,4 @@ streamlit run app.py
 
 ## Author
 
-AnalystAI was built by **[Nero103](https://github.com/Nero103)** as a portfolio project focused on AI-powered data analysis and analyst automation. PLEASE GIVE CREDIT
+Moros AnalystAI was built by **[Nero103](https://github.com/Nero103)** as a portfolio project focused on AI-powered data analysis and analyst automation. PLEASE GIVE CREDIT
