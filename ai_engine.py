@@ -1,12 +1,15 @@
 import ollama
+import pandas as pd
 from config import MODEL
-
+from data_utils import build_dataset_profile
 
 # ------------------------
 # CSV ANALSIS PROMPT
 # ------------------------
 
 def analyze_text(df, question):
+    dataset_profile = build_dataset_profile(df)
+    
     prompt = f"""
     You are a senior data analyst working for a Fortune 500 company.
 
@@ -23,26 +26,18 @@ def analyze_text(df, question):
     - For every major conclusion, strictly identify the supporting column, value, statistic, or sample row.
     - Strictly do not claim causation unless the dataset directly supports it.
     - Strictly label unsupported possibilities as hypotheses, not facts.
+    - Use the exact row count stated in the verified profile.
+    - Never estimate or approximate unique counts.
+    - Never describe a date range unless the verified profile explicitly provides minimum and maximum dates.
+    - Do not invent sample rows. Only discuss rows if actual row data is provided.
+    - When discussing missing data, cite the exact missing-value counts from the profile.
+    - Do not recommend collecting additional fields unless the user specifically asks for recommendations about data collection.
+    - Do not make geographic, temporal, or business-scope claims that are not directly present in the verified profile.
+    - If a fact is not present in the verified profile, state that it cannot be determined.
 
-    DATASET:
+    VERIFIED DATASET PROFILE:
 
-    Rows: {len(df)}
-    Columns: {len(df.columns)}
-    
-    Column names: 
-    {list(df.columns)}
-    
-    Data types: 
-    {df.dtypes.to_string()}
-
-    Missing Values: 
-    {df.isnull().sum().to_string()}
-
-    First 10 rows: 
-    {df.head(10).to_string()}
-
-    Summary Statistics:
-    {df.describe(include="all").to_string()}
+    {dataset_profile}
 
     User Question:
     {question}

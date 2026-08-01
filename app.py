@@ -6,7 +6,7 @@ from document_utils import extract_pdf_text
 from config import MODEL, PDF_LIMIT
 
 st.set_page_config(
-    page_title="AnalystAI",
+    page_title="Moros AnalystAI",
     page_icon="⬢",
     layout="wide",
     initial_sidebar_state="expanded"
