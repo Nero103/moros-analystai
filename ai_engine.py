@@ -1,13 +1,60 @@
 import ollama
 import pandas as pd
 from config import MODEL
-from data_utils import build_dataset_profile
+from data_utils import (
+    build_dataset_profile, detect_query_type, 
+    find_column_in_question, build_average_report,
+    build_maximum_report,)
 
 # ------------------------
 # CSV ANALSIS PROMPT
 # ------------------------
 
 def analyze_text(df, question):
+
+    query_type = detect_query_type(question)
+
+    matched_column = find_column_in_question(df, question)
+
+    if query_type == "average":
+        if matched_column is None:
+            return (
+                "I detected an average question, but I could not identify "
+                "which dataset column to calculate."
+            )
+
+        average_report = build_average_report(
+            df, matched_column
+        )
+
+        if average_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain usable nueric valuse for an average."
+            )
+
+        return average_report
+
+    if query_type == "maximum":
+        if matched_column is None:
+            return (
+                "I detected a maximum value question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        maximum_report = build_maximum_report(
+            df, matched_column
+        )
+
+        if maximum_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain numeric values."
+            )
+
+        return maximum_report
+
+
     dataset_profile = build_dataset_profile(df)
     
     prompt = f"""
@@ -33,12 +80,14 @@ def analyze_text(df, question):
     - When discussing missing data, cite the exact missing-value counts from the profile.
     - Do not recommend collecting additional fields unless the user specifically asks for recommendations about data collection.
     - Do not make geographic, temporal, or business-scope claims that are not directly present in the verified profile.
-    - If a fact is not present in the verified profile, state that it cannot be determined.
 
     VERIFIED DATASET PROFILE:
 
     {dataset_profile}
 
+    Detected Query Type
+    {query_type}
+    
     User Question:
     {question}
 
