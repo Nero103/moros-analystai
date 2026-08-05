@@ -17,7 +17,7 @@ st.set_page_config(
 # ------------------
 
 st.title("⬢ Moros AnalystAI")
-st.markdown("## Transform Data into Decsions")
+st.markdown("## Transform Data into Decisions")
 st.caption("AI-Powered Business & Document Intelligence")
 st.divider()
 

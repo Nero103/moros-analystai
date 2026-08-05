@@ -200,22 +200,13 @@ def build_average_report(df: pd.DataFrame, column: str) -> Optional[str]:
     else:
         formatted_value = f"{average_value:,.2f}"
 
-    return f"""
-    ## Executive Answer
-
-The average **{column}** is **{formatted_value}**.
-
-## Data Evidence
-
-- **Column:** {column}
-- **Valid records used:** {valid_count:,}
-- **Calculation:** Pandas arithmetic mean
-
-## Confidence
-
-- **Level:** High
-- **Reason:** The result was calculated directly from the uploaded dataset using Python.
-""".strip()
+    return build_numeric_report(
+        column=column,
+        metric_label="Average",
+        formatted_value=formatted_value,
+        valid_count=valid_count,
+        calculation_label="Pandas arithmetic mean"
+    )
 
 # -------------
 # MAX
@@ -251,22 +242,83 @@ def build_maximum_report(df: pd.DataFrame, column: str) -> Optional[str]:
     else:
         formatted_value = f"{maximum_value:,.2f}"
 
-    return f"""
-## Executive Answer
+    return build_numeric_report(
+        column=column,
+        metric_label="Maximum",
+        formatted_value=formatted_value,
+        valid_count=valid_count,
+        calculation_label="Pandas maximum"
+    )
 
-The maximum **{column}** is **{formatted_value}**.
+
+# -------------
+# MIN
+# -------------
+
+def calculate_minimum(df: pd.DataFrame, column: str) -> Optional[float]:
+    if column not in df.columns:
+        return None
+    
+    numeric_values = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    )
+
+    if numeric_values.notna().sum() == 0:
+        return None
+    
+    return float(numeric_values.min())
+
+def build_minimum_report(df: pd.DataFrame, column: str) -> Optional[str]:
+    minimum_value = calculate_minimum(df, column)
+
+    if minimum_value is None:
+        return None
+
+    valid_count = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    ).notna().sum()
+
+    if normalize_text(column) == "sale price":
+        formatted_value = f"${minimum_value:,.2f}"
+    else:
+        formatted_value = f"{minimum_value:,.2f}"
+
+    return build_numeric_report(
+        column=column,
+        metric_label="Minimum",
+        formatted_value=formatted_value,
+        valid_count=valid_count,
+        calculation_label="Pandas minimum"
+    )
+
+
+# ----------------------
+# GENERIC REPORT BBUILDER
+# ----------------------
+
+def build_numeric_report(
+    column: str, metric_label: str, formatted_value: str,
+    valid_count: int, calculation_label: str
+    ) -> str:
+    return f"""
+    ## Executive Answer
+
+The {metric_label.lower()} **{column}** is **{formatted_value}**.
 
 ## Data Evidence
 
 - **Column:** {column}
 - **Valid records evaluated:** {valid_count:,}
-- **Calculation:** Pandas maximum
+- **Calculation:** {calculation_label}
 
 ## Confidence
 
 - **Level:** High
 - **Reason:** The result was calculated directly from the uploaded dataset using Python.
 """.strip()
+
 
 
 
@@ -314,35 +366,35 @@ if __name__ == "__main__":
         print(f"{question} -> {matched_column}")
 
     
-    #average_test_df = pd.DataFrame({
-     #   "SalePrice": [100000, 200000, 300000, None],
-      #  "Category": ["A", "B", "A", "B"]
-    #})
+    average_test_df = pd.DataFrame({
+        "SalePrice": [100000, 200000, 300000, None],
+        "Category": ["A", "B", "A", "B"]
+    })
 
-    #sale_price_average = calculate_average(
-     #   average_test_df,
-      #  "SalePrice"
-    #)
+    sale_price_average = calculate_average(
+        average_test_df,
+        "SalePrice"
+    )
 
-    #category_average = calculate_average(
-     #   average_test_df,
-      #  "Category"
-    #)
+    category_average = calculate_average(
+        average_test_df,
+        "Category"
+    )
 
-    #print(f"SalePrice average -> {sale_price_average}")
-    #print(f"Category average -> {category_average}")
+    print(f"SalePrice average -> {sale_price_average}")
+    print(f"Category average -> {category_average}")
 
-    #average_report_test_df = pd.DataFrame({
-    #"SalePrice": [100000, 200000, 300000, None]
-    #})
+    average_report_test_df = pd.DataFrame({
+    "SalePrice": [100000, 200000, 300000, None]
+    })
 
-    #average_report = build_average_report(
-    #    average_report_test_df,
-    #    "SalePrice"
-    #)
+    average_report = build_average_report(
+        average_report_test_df,
+        "SalePrice"
+    )
 
-    #print("\nAverage report test:\n")
-    #print(average_report)
+    print("\nAverage report test:\n")
+    print(average_report)
 
     maximum_test_df = pd.DataFrame({
     "SalePrice": [100000, 450000, 300000, None],
@@ -369,3 +421,29 @@ if __name__ == "__main__":
 
     print("\nMaximum report test:\n")
     print(maximum_report)
+
+    minimum_test_df = pd.DataFrame({
+    "SalePrice": [100000, 450000, 300000, None],
+    "Category": ["A", "B", "A", "B"]
+    })
+
+    sale_price_minimum = calculate_minimum(
+        minimum_test_df,
+        "SalePrice"
+    )
+
+    category_minimum = calculate_minimum(
+        minimum_test_df,
+        "Category"
+    )
+
+    print(f"SalePrice minimum -> {sale_price_minimum}")
+    print(f"Category minimum -> {category_minimum}")
+
+    minimum_report = build_minimum_report(
+    minimum_test_df,
+    "SalePrice"
+    )
+
+    print("\nMinimum report test:\n")
+    print(minimum_report)

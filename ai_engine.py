@@ -4,7 +4,7 @@ from config import MODEL
 from data_utils import (
     build_dataset_profile, detect_query_type, 
     find_column_in_question, build_average_report,
-    build_maximum_report,)
+    build_maximum_report, build_minimum_report,)
 
 # ------------------------
 # CSV ANALSIS PROMPT
@@ -30,7 +30,7 @@ def analyze_text(df, question):
         if average_report is None:
             return (
                 f"I found the column '{matched_column}', but it does not "
-                "contain usable nueric valuse for an average."
+                "contain usable numeric values for an average."
             )
 
         return average_report
@@ -53,6 +53,26 @@ def analyze_text(df, question):
             )
 
         return maximum_report
+
+    if query_type == "minimum":
+        if matched_column is None:
+            return (
+                "I detected a minimum-value question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        minimum_report = build_minimum_report(
+            df,
+            matched_column
+        )
+
+        if minimum_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain usable numeric values."
+            )
+
+        return minimum_report
 
 
     dataset_profile = build_dataset_profile(df)
