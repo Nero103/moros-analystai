@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
 # ----------------------
 # READ DATA
@@ -96,6 +96,7 @@ def build_dataset_profile(df: pd.DataFrame) -> str:
 
 def detect_query_type(question: str) -> str:
     question = question.lower().strip()
+    question_tokens = set(question.split())
 
     if any(word in question for word in [
         "summarize", "summary", "overview", "stand out", "stands out"
@@ -112,14 +113,12 @@ def detect_query_type(question: str) -> str:
         ]):
         return "average"
 
-    if any(word in question for word in [
-        "maximum", "highest", "largest", "max"
-        ]):
+    if any(word in question_tokens for word in [
+        "maximum", "highest", "largest", "max"]):
         return "maximum"
 
-    if any(word in question for word in [
-        "minimum", "lowest", "smallest", "min"
-        ]):
+    if any(word in question_tokens for word in [
+        "minimum", "lowest", "smallest", "min"]):
         return "minimum"
 
     if any(word in question for word in [
@@ -243,11 +242,11 @@ def build_maximum_report(df: pd.DataFrame, column: str) -> Optional[str]:
         formatted_value = f"{maximum_value:,.2f}"
 
     return build_numeric_report(
-        column=column,
-        metric_label="Maximum",
-        formatted_value=formatted_value,
-        valid_count=valid_count,
-        calculation_label="Pandas maximum"
+        column = column,
+        metric_label = "Maximum",
+        formatted_value = formatted_value,
+        valid_count = valid_count,
+        calculation_label = "Pandas maximum"
     )
 
 
@@ -286,16 +285,118 @@ def build_minimum_report(df: pd.DataFrame, column: str) -> Optional[str]:
         formatted_value = f"{minimum_value:,.2f}"
 
     return build_numeric_report(
-        column=column,
-        metric_label="Minimum",
-        formatted_value=formatted_value,
-        valid_count=valid_count,
-        calculation_label="Pandas minimum"
+        column = column,
+        metric_label = "Minimum",
+        formatted_value = formatted_value,
+        valid_count = valid_count,
+        calculation_label = "Pandas minimum"
     )
 
 
+# -------------
+# COUNT
+# -------------
+
+def calculate_row_count(df: pd.DataFrame) -> int:
+    return len(df)
+
+def build_row_count_report(df: pd.DataFrame) -> str:
+    row_count = calculate_row_count(df)
+
+    return f"""
+    ## Executive Answer
+
+The dataset contains **{row_count:,}** records.
+
+## Data Evidence
+
+- **Calculation:** Total number of rows in the dataset
+- **Rows counted:** {row_count:,}
+
+## Confidence
+
+- **Level:** High
+- **Reason:** The result was calculated directly from the uploaded dataset using Python.
+""".strip()
+
+def find_value_in_question(df: pd.DataFrame, question: str) -> Optional[Tuple[str, object]]:
+    normalized_question = normalize_text(question)
+    question_tokens = set(normalized_question.split())
+
+    possible_matches = []
+
+    for column in df.columns:
+        unique_values = df[column].dropna().unique()
+
+        for value in unique_values:
+            value_text = normalize_text(str(value))
+
+            if not value_text:
+                continue
+
+            possible_matches.append(
+                (len(value_text), column, value, value_text)
+            )
+
+    # Check longer values first, such as "one family",
+    # before short values such as "m".
+    possible_matches.sort(reverse=True, key=lambda item: item[0])
+
+    for _, column, value, value_text in possible_matches:
+        if " " in value_text:
+            if value_text in normalized_question:
+                return column, value
+        else:
+            if value_text in question_tokens:
+                return column, value
+
+    return None
+
+def calculate_value_count(df: pd.DataFrame, column: str, value: object) -> Optional[int]:
+    if column not in df.columns:
+        return None
+
+    count = int(
+        df[column].eq(value).sum()
+    )
+
+    return count
+
+def build_value_count_report(df: pd.DataFrame, column: str, value: object) -> Optional[str]:
+    count = calculate_value_count(df, column, value)
+
+    if count is None:
+        return None
+
+    total_rows = len(df)
+    percentage = (
+        (count / total_rows) * 100
+        if total_rows > 0
+        else 0
+    )
+
+    return f"""
+    ## Executive Answer
+
+The value **{value}** appears **{count:,}** times in **{column}**.
+
+## Data Evidence
+
+- **Column:** {column}
+- **Value counted:** {value}
+- **Matching records:** {count:,}
+- **Total dataset records:** {total_rows:,}
+- **Share of dataset:** {percentage:.2f}%
+- **Calculation:** Pandas exact-value count
+
+## Confidence
+
+- **Level:** High
+- **Reason:** The result was calculated directly from the uploaded dataset using Python.
+""".strip()
+
 # ----------------------
-# GENERIC REPORT BBUILDER
+# GENERIC REPORT BUILDER
 # ----------------------
 
 def build_numeric_report(
@@ -319,6 +420,36 @@ The {metric_label.lower()} **{column}** is **{formatted_value}**.
 - **Reason:** The result was calculated directly from the uploaded dataset using Python.
 """.strip()
 
+# ----------------------
+# QUERY IDENTIFIER
+# ----------------------
+
+def is_row_count_question(question: str) -> bool:
+    normalized_question = normalize_text(question)
+
+    row_words = [
+        "record",
+        "records",
+        "row",
+        "rows",
+        "entry",
+        "entries",
+        "observation",
+        "observations",
+    ]
+
+    count_words = [
+        "how many",
+        "total",
+        "number",
+        "count",
+    ]
+
+    return (
+        any(word in normalized_question for word in row_words)
+        and
+        any(word in normalized_question for word in count_words)
+    )
 
 
 
@@ -447,3 +578,82 @@ if __name__ == "__main__":
 
     print("\nMinimum report test:\n")
     print(minimum_report)
+
+    count_test_df = pd.DataFrame({
+    "Category": ["A", "B", "A", "C"]
+    })
+
+    row_count = calculate_row_count(count_test_df)
+
+    print(f"Row count -> {row_count}")
+
+    row_count_report = build_row_count_report(count_test_df)
+
+    print("\nRow Count Report:\n")
+    print(row_count_report)
+
+    row_count_questions = [
+    "How many records are in this dataset?",
+    "What is the total number of rows?",
+    "How many malignant tumors are there?"
+    ]
+
+    for question in row_count_questions:
+        result = is_row_count_question(question)
+        print(f"{question} -> {result}")
+
+    value_test_df = pd.DataFrame({
+    "diagnosis": ["B", "M", "B", "M"],
+    "AssrLandUse": [
+        "ONE FAMILY",
+        "CONDOMINIMUM",
+        "ONE FAMILY",
+        "THREE FAMILY"
+        ]
+    })
+
+    value_questions = [
+        "How many ONE FAMILY properties are there?",
+        "How many CONDOMINIMUM properties are there?",
+        "How many M records are there?"
+    ]
+
+    for question in value_questions:
+        matched_value = find_value_in_question(
+            value_test_df,
+            question
+        )
+        print(f"{question} -> {matched_value}")
+
+    one_family_count = calculate_value_count(
+    value_test_df,
+    "AssrLandUse",
+    "ONE FAMILY"
+    )
+
+    malignant_code_count = calculate_value_count(
+        value_test_df,
+        "diagnosis",
+        "M"
+    )
+
+    missing_column_count = calculate_value_count(
+        value_test_df,
+        "NotAColumn",
+        "M"
+    )
+
+    print(f"ONE FAMILY count -> {one_family_count}")
+    print(f"M diagnosis count -> {malignant_code_count}")
+    print(f"Missing column count -> {missing_column_count}")
+
+    one_family_report = build_value_count_report(
+    value_test_df,
+    "AssrLandUse",
+    "ONE FAMILY"
+    )
+
+    print("\nValue Count Report:\n")
+    #print(one_family_report)
+    print(detect_query_type("How many CONDOMINIMUM properties are there?"))
+

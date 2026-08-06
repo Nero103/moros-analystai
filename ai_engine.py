@@ -4,7 +4,10 @@ from config import MODEL
 from data_utils import (
     build_dataset_profile, detect_query_type, 
     find_column_in_question, build_average_report,
-    build_maximum_report, build_minimum_report,)
+    build_maximum_report, build_minimum_report,
+    build_row_count_report, is_row_count_question,
+    find_value_in_question, build_value_count_report, 
+    )
 
 # ------------------------
 # CSV ANALSIS PROMPT
@@ -13,6 +16,9 @@ from data_utils import (
 def analyze_text(df, question):
 
     query_type = detect_query_type(question)
+
+    if query_type == "count" and is_row_count_question(question):
+        return build_row_count_report(df)
 
     matched_column = find_column_in_question(df, question)
 
@@ -73,6 +79,25 @@ def analyze_text(df, question):
             )
 
         return minimum_report
+
+    if query_type == "count":
+        matched_value = find_value_in_question(
+            df,
+            question
+        )
+
+        if matched_value is not None:
+            matched_value_column, matched_value_value = matched_value
+
+            value_count_report = build_value_count_report(
+                df,
+                matched_value_column,
+                matched_value_value
+            )
+
+            if value_count_report is not None:
+                return value_count_report
+
 
 
     dataset_profile = build_dataset_profile(df)
