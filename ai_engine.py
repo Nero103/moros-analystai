@@ -5,8 +5,10 @@ from data_utils import (
     build_dataset_profile, detect_query_type, 
     find_column_in_question, build_average_report,
     build_maximum_report, build_minimum_report,
-    build_row_count_report, is_row_count_question,
-    find_value_in_question, build_value_count_report, 
+    build_median_report, build_row_count_report, 
+    is_row_count_question, find_value_in_question, 
+    build_value_count_report, find_alias_value_in_question,
+    build_standard_deviation_report, 
     )
 
 # ------------------------
@@ -21,6 +23,52 @@ def analyze_text(df, question):
         return build_row_count_report(df)
 
     matched_column = find_column_in_question(df, question)
+
+    # STANDARD DEVIATION
+
+    if query_type == "standard_deviation":
+        if matched_column is None:
+            return (
+                "I detected a standard deviation question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        std_report = build_standard_deviation_report(
+            df,
+            matched_column
+        )
+
+        if std_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain enough usable numeric values."
+            )
+
+        return std_report
+
+    # MEDIAN
+
+    if query_type == "median":
+        if matched_column is None:
+            return (
+                "I detected a median question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        median_report = build_median_report(
+            df,
+            matched_column
+        )
+
+        if median_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain usable numeric values."
+            )
+
+        return median_report
+
+    # AVERAGE
 
     if query_type == "average":
         if matched_column is None:
@@ -41,6 +89,8 @@ def analyze_text(df, question):
 
         return average_report
 
+    # MAXIMUM    
+
     if query_type == "maximum":
         if matched_column is None:
             return (
@@ -59,6 +109,8 @@ def analyze_text(df, question):
             )
 
         return maximum_report
+
+    # MINIMUM    
 
     if query_type == "minimum":
         if matched_column is None:
@@ -80,24 +132,31 @@ def analyze_text(df, question):
 
         return minimum_report
 
+    # COUNT    
+
     if query_type == "count":
         matched_value = find_value_in_question(
             df,
             question
         )
 
-        if matched_value is not None:
-            matched_value_column, matched_value_value = matched_value
+    if matched_value is None:
+        matched_value = find_alias_value_in_question(
+            df,
+            question
+        )
 
-            value_count_report = build_value_count_report(
-                df,
-                matched_value_column,
-                matched_value_value
-            )
+    if matched_value is not None:
+        matched_value_column, matched_value_value = matched_value
 
-            if value_count_report is not None:
-                return value_count_report
+        value_count_report = build_value_count_report(
+            df,
+            matched_value_column,
+            matched_value_value
+        )
 
+        if value_count_report is not None:
+            return value_count_report
 
 
     dataset_profile = build_dataset_profile(df)

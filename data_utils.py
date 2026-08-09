@@ -98,38 +98,64 @@ def detect_query_type(question: str) -> str:
     question = question.lower().strip()
     question_tokens = set(question.split())
 
+    # SUMMARY
+
     if any(word in question for word in [
         "summarize", "summary", "overview", "stand out", "stands out"
         ]):
         return "summary"
+
+    # MISSING VALUES
 
     if any(word in question for word in [
         "missing", "null", "blank", "incomplete"
         ]):
         return "missing_values"
 
-    if any(word in question for word in [
+    # MEDIAN
+
+    if "median" in question_tokens:
+        return "median"
+
+    # STANDARD DEVIATION
+
+    if "standard deviation" in question or "std dev" in question or "std" in question_tokens:
+        return "standard_deviation"
+
+    # AVERAGE
+
+    if any(word in question_tokens for word in [
         "average", "mean"
         ]):
         return "average"
+
+    # MAXIMUM
 
     if any(word in question_tokens for word in [
         "maximum", "highest", "largest", "max"]):
         return "maximum"
 
+    # MINIMUM
+
     if any(word in question_tokens for word in [
         "minimum", "lowest", "smallest", "min"]):
         return "minimum"
+
+    # COUNT
 
     if any(word in question for word in [
         "how many", "count", "number of"
         ]):
         return "count"
 
+    # DISTRIBUTION
+
     if any(word in question for word in [
         "distribution", "frequency", "most common"
         ]):
         return "distribution"
+
+    # RELATIONSHIP
 
     if any(word in question for word in [
         "correlation", "relationship", "related"
@@ -292,6 +318,47 @@ def build_minimum_report(df: pd.DataFrame, column: str) -> Optional[str]:
         calculation_label = "Pandas minimum"
     )
 
+# -------------
+# MEDIAN
+# -------------
+
+def calculate_median(df: pd.DataFrame, column: str) -> Optional[float]:
+    if column not in df.columns:
+        return None
+
+    numeric_values = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    )
+
+    if numeric_values.notna().sum() == 0:
+        return None
+
+    return float(numeric_values.median())
+
+def build_median_report(df: pd.DataFrame, column: str) -> Optional[str]:
+    median_value = calculate_median(df, column)
+
+    if median_value is None:
+        return None
+
+    valid_count = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    ).notna().sum()
+
+    if normalize_text(column) == "sale price":
+        formatted_value = f"${median_value:,.2f}"
+    else:
+        formatted_value = f"{median_value:,.2f}"
+
+    return build_numeric_report(
+        column = column,
+        metric_label = "Median",
+        formatted_value = formatted_value,
+        valid_count = valid_count,
+        calculation_label = "Pandas median"
+    )
 
 # -------------
 # COUNT
@@ -395,6 +462,75 @@ The value **{value}** appears **{count:,}** times in **{column}**.
 - **Reason:** The result was calculated directly from the uploaded dataset using Python.
 """.strip()
 
+
+# ----------------------
+# VALUE ALIAS
+# ----------------------
+
+value_aliases = {
+    "malignant": "M",
+    "benign": "B"
+}
+
+def find_alias_value_in_question(df: pd.DataFrame, question: str) -> Optional[Tuple[str, object]]:
+    normalized_question = normalize_text(question)
+
+    for alias, target_value in value_aliases.items():
+        if alias not in normalized_question:
+            continue
+        
+        for column in df.columns:
+            unique_values = df[column].dropna().unique()
+
+            for value in unique_values:
+                if str(value).lower() == str(target_value).lower():
+                    return column, value
+
+    return None
+
+
+# ----------------------
+# STANDAARD DEVIATION
+# ----------------------
+
+def calculate_standard_deviation(df: pd.DataFrame, column: str) -> Optional[float]:
+    if column not in df.columns:
+        return None
+
+    numeric_values = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    )
+
+    if numeric_values.notna().sum() < 2:
+        return None
+
+    return float(numeric_values.std())
+
+def build_standard_deviation_report(df: pd.DataFrame, column: str) -> Optional[str]:
+    std_value = calculate_standard_deviation(df, column)
+
+    if std_value is None:
+        return None
+
+    valid_count = pd.to_numeric(
+        df[column],
+        errors="coerce"
+    ).notna().sum()
+
+    if normalize_text(column) == "sale price":
+        formatted_value = f"${std_value:,.2f}"
+    else:
+        formatted_value = f"{std_value:,.2f}"
+
+    return build_numeric_report(
+        column = column,
+        metric_label = "Standard deviation of",
+        formatted_value = formatted_value,
+        valid_count = valid_count,
+        calculation_label = "Pandas sample standard deviation"
+    )
+
 # ----------------------
 # GENERIC REPORT BUILDER
 # ----------------------
@@ -496,7 +632,8 @@ if __name__ == "__main__":
         )
         print(f"{question} -> {matched_column}")
 
-    
+    # AVERAGE TEST
+
     average_test_df = pd.DataFrame({
         "SalePrice": [100000, 200000, 300000, None],
         "Category": ["A", "B", "A", "B"]
@@ -527,6 +664,8 @@ if __name__ == "__main__":
     print("\nAverage report test:\n")
     print(average_report)
 
+    # MAXIMUM TEST
+
     maximum_test_df = pd.DataFrame({
     "SalePrice": [100000, 450000, 300000, None],
     "Category": ["A", "B", "A", "B"]
@@ -553,6 +692,8 @@ if __name__ == "__main__":
     print("\nMaximum report test:\n")
     print(maximum_report)
 
+    # MINIMUM TEST
+
     minimum_test_df = pd.DataFrame({
     "SalePrice": [100000, 450000, 300000, None],
     "Category": ["A", "B", "A", "B"]
@@ -578,6 +719,8 @@ if __name__ == "__main__":
 
     print("\nMinimum report test:\n")
     print(minimum_report)
+
+    # COUNT TEST
 
     count_test_df = pd.DataFrame({
     "Category": ["A", "B", "A", "C"]
@@ -657,3 +800,118 @@ if __name__ == "__main__":
     #print(one_family_report)
     print(detect_query_type("How many CONDOMINIMUM properties are there?"))
 
+    # ALIAS COUNT TEST
+
+    alias_test_df = pd.DataFrame({
+        "diagnosis": ["B", "M", "B", "M"]
+    })
+
+    alias_questions = [
+        "How many malignant tumors are there?",
+        "How many benign tumors are there?",
+        "How many aggressive tumors are there?"
+    ]
+
+    for question in alias_questions:
+        result = find_alias_value_in_question(
+            alias_test_df,
+            question
+        )
+        print(f"{question} -> {result}")
+
+    # MEDIAN TEST
+
+    median_test_df = pd.DataFrame({
+    "SalePrice": [100000, 200000, 300000, 400000, 500000],
+    "Category": ["A", "B", "C", "D", "E"]
+    })
+
+    sale_price_median = calculate_median(
+        median_test_df,
+        "SalePrice"
+    )
+
+    category_median = calculate_median(
+        median_test_df,
+        "Category"
+    )
+
+    missing_median = calculate_median(
+        median_test_df,
+        "NotAColumn"
+    )
+
+    print(f"SalePrice median -> {sale_price_median}")
+    print(f"Category median -> {category_median}")
+    print(f"Missing column median -> {missing_median}")
+
+    median_questions = [
+    "What is the median sale price?",
+    "Calculate the median radius mean",
+    "What is the average sale price?"
+    ]
+
+    for question in median_questions:
+        result = detect_query_type(question)
+        print(f"{question} -> {result}")
+
+    median_report = build_median_report(
+    median_test_df,
+    "SalePrice"
+    )
+
+    print("\nMedian Report:\n")
+    print(median_report)
+
+    # STANDARD DEVIATION TEST
+
+    std_test_df = pd.DataFrame({
+    "SalePrice": [100000, 200000, 300000, 400000, 500000],
+    "Category": ["A", "B", "C", "D", "E"],
+    "SingleValue": [100000, None, None, None, None]
+    })
+
+    sale_price_std = calculate_standard_deviation(
+        std_test_df,
+        "SalePrice"
+    )
+
+    category_std = calculate_standard_deviation(
+        std_test_df,
+        "Category"
+    )
+
+    single_value_std = calculate_standard_deviation(
+        std_test_df,
+        "SingleValue"
+    )
+
+    missing_std = calculate_standard_deviation(
+        std_test_df,
+        "NotAColumn"
+    )
+
+    print(f"SalePrice standard deviation -> {sale_price_std}")
+    print(f"Category standard deviation -> {category_std}")
+    print(f"Single value standard deviation -> {single_value_std}")
+    print(f"Missing column standard deviation -> {missing_std}")
+
+    std_questions = [
+    "What is the standard deviation of sale price?",
+    "Calculate the standard deviation of radius mean",
+    "What is the std dev of sale price?",
+    "What is the std of sale price?",
+    "What is the average sale price?"
+    ]
+
+    for question in std_questions:
+        result = detect_query_type(question)
+        print(f"{question} -> {result}")
+
+    std_report = build_standard_deviation_report(
+    std_test_df,
+    "SalePrice"
+    )
+
+    print("\nStandard Deviation Report:\n")
+    print(std_report)
