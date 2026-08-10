@@ -12,7 +12,7 @@ from data_utils import (
     build_distribution_report, find_columns_in_question,
     build_correlation_report, build_missing_values_report,
     build_sum_report, extract_percentile, 
-    build_percentile_report,
+    build_percentile_report, build_numeric_profile_report,
     )
 
 # ------------------------
@@ -295,6 +295,27 @@ def analyze_text(df, question):
 
         return sum_report
 
+    if query_type == "numeric_profile":
+        if matched_column is None:
+            return (
+                "I detected a numeric analysis request, but I could not "
+                "identify the requested dataset column."
+            )
+
+        profile_report = build_numeric_profile_report(
+            df,
+            matched_column
+        )
+
+        if profile_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain usable numeric values for a statistical profile."
+            )
+
+        return profile_report
+
+    # LLM Reader
 
     dataset_profile = build_dataset_profile(df)
     

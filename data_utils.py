@@ -98,13 +98,6 @@ def detect_query_type(question: str) -> str:
     question = question.lower().strip()
     question_tokens = set(question.split())
 
-    # SUMMARY
-
-    if any(word in question for word in [
-        "summarize", "summary", "overview", "stand out", "stands out"
-        ]):
-        return "summary"
-
     # CORRELATION
 
     if any(word in question for word in [
@@ -195,6 +188,30 @@ def detect_query_type(question: str) -> str:
         "correlation", "relationship", "related"
         ]):
         return "correlation"
+
+    # NUMERIC PROFILE / MULTI-STAT ANALYSIS
+
+    if (
+        "descriptive statistics" in question
+        or "statistical summary" in question
+        or "numeric profile" in question
+        or "numerical profile" in question
+        or question.startswith("analyze ")
+        or question.startswith("analyse ")
+        or question.startswith("summarize ")
+        or question.startswith("summarise ")
+        or "analysis of" in question
+        ):
+
+        return "numeric_profile"
+
+    # SUMMARY
+
+    if any(word in question for word in [
+        "summarize", "summary", "overview", "stand out", "stands out"
+        ]):
+        return "summary"
+
 
     return "general"
 
@@ -1057,6 +1074,179 @@ def build_percentile_report(df: pd.DataFrame, column: str, percentile: float) ->
     )
 
 # ----------------------
+# NUMERIC PROFILE
+# ----------------------
+
+def calculate_numeric_profile(df: pd.DataFrame, column: str) -> Optional[dict]:
+    if column not in df.columns:
+        return None
+
+    numeric_values = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    )
+
+    valid_count = int(numeric_values.notna().sum())
+
+    if valid_count == 0:
+        return None
+    
+    missing_count = int(df[column].isna().sum())
+
+    return {
+        "count": valid_count,
+        "missing": missing_count,
+        "mean": calculate_average(df, column),
+        "median": calculate_median(df, column),
+        "minimum": calculate_minimum(df, column),
+        "maximum": calculate_maximum(df, column),
+        "std_dev": calculate_standard_deviation(df, column),
+        "q1": calculate_percentile(df, column, 25),
+        "q3": calculate_percentile(df, column, 75),
+    }
+
+# --------------------------
+# NUMERIC REPORT INTERPRETER
+# --------------------------
+
+def interpret_numeric_profile(profile: dict, formatter = None) -> list:
+    if formatter is None:
+        formatter = lambda value: f"{value:,.2f}"
+
+    insights = []
+
+    mean_value = profile["mean"]
+    median_value = profile["median"]
+    minimum = profile["minimum"]
+    maximum = profile["maximum"]
+    std_dev = profile["std_dev"]
+    q1 = profile["q1"]
+    q3 = profile["q3"]
+
+    # Mean vs median
+    if mean_value is not None and median_value is not None:
+        if median_value != 0:
+            relative_difference = (
+                abs(mean_value - median_value)
+                / abs(median_value)
+            )
+
+            if relative_difference >= 0.20:
+                if mean_value > median_value:
+                    insights.append(
+                        "The mean is substantially higher than the median, "
+                        "which may indicate right-skew or influence from "
+                        "large values."
+                    )
+                else:
+                    insights.append(
+                        "The mean is substantially lower than the median, "
+                        "which may indicate left-skew or influence from "
+                        "small values."
+                    )
+
+    # Middle 50%
+    if q1 is not None and q3 is not None:
+        insights.append(
+            f"The middle 50% of values fall between "
+            f"{formatter(q1)} and {formatter(q3)}."
+        )
+
+    # Overall range
+    if minimum is not None and maximum is not None:
+        insights.append(
+            f"Values range from {formatter(minimum)} "
+            f"to {formatter(maximum)}."
+        )
+
+    # Standard deviation
+    if std_dev is not None and mean_value not in (None, 0):
+        coefficient_of_variation = abs(
+            std_dev / mean_value
+        )
+
+        if coefficient_of_variation >= 1:
+            insights.append(
+                "The standard deviation is large relative to the mean, "
+                "indicating substantial variability."
+            )
+
+    return insights
+
+# ----------------------
+# NUMERIC REPORT BUILDER
+# ----------------------
+
+def build_numeric_profile_report(df: pd.DataFrame, column: str) -> Optional[str]:
+    profile = calculate_numeric_profile(df, column)
+
+    if profile is None:
+        return None
+
+    def format_value(value: float) -> str:
+        if normalize_text(column) == "sale price":
+            return f"\\${value:,.2f}"
+
+        return f"{value:,.2f}"
+
+    insights = interpret_numeric_profile(
+        profile,
+        formatter=format_value
+    )
+
+    mean_value = format_value(profile["mean"])
+    median_value = format_value(profile["median"])
+    minimum = format_value(profile["minimum"])
+    maximum = format_value(profile["maximum"])
+    std_dev = format_value(profile["std_dev"])
+    q1 = format_value(profile["q1"])
+    q3 = format_value(profile["q3"])
+
+    if insights:
+        insight_text = "\n".join(
+            f"- {insight}"
+            for insight in insights
+        )
+    else:
+        insight_text = (
+            "- No additional deterministic interpretation "
+            "was generated."
+        )
+
+    return f"""
+## Executive Answer
+
+The numeric profile for **{column}** was calculated from **{profile["count"]:,} valid records**.
+
+## Key Insights
+
+{insight_text}
+
+## Descriptive Statistics
+
+- **Mean:** {mean_value}
+- **Median:** {median_value}
+- **Minimum:** {minimum}
+- **Q1 (25th percentile):** {q1}
+- **Q3 (75th percentile):** {q3}
+- **Maximum:** {maximum}
+- **Standard deviation:** {std_dev}
+- **Missing values:** {profile["missing"]:,}
+
+## Data Evidence
+
+- **Column:** {column}
+- **Valid records evaluated:** {profile["count"]:,}
+- **Calculation:** Deterministic Pandas descriptive statistics
+
+## Confidence
+
+- **Level:** High
+- **Reason:** All statistics and interpretations were generated from deterministic Python calculations on the uploaded dataset.
+""".strip()
+
+
+# ----------------------
 # GENERIC REPORT BUILDER
 # ----------------------
 
@@ -1897,3 +2087,119 @@ if __name__ == "__main__":
     for value in correlation_interpretation_tests:
         result = interpret_correlation(value)
         print(f"{value} -> {result}")
+
+    # NUMERIC PROFILE
+
+    profile_test_df = pd.DataFrame({
+        "SalePrice": [
+            100000,
+            200000,
+            300000,
+            400000,
+            500000,
+            None
+        ],
+        "Category": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F"
+        ]
+    })
+
+    sale_price_profile = calculate_numeric_profile(
+        profile_test_df,
+        "SalePrice"
+    )
+
+    category_profile = calculate_numeric_profile(
+        profile_test_df,
+        "Category"
+    )
+
+    missing_profile = calculate_numeric_profile(
+        profile_test_df,
+        "NotAColumn"
+    )
+
+    print("SalePrice profile:")
+    print(sale_price_profile)
+
+    print("\nCategory profile:")
+    print(category_profile)
+
+    print("\nMissing column profile:")
+    print(missing_profile)
+
+    profile_insights = interpret_numeric_profile(
+    sale_price_profile
+    )
+
+    print("Profile insights:")
+
+    for insight in profile_insights:
+        print(f"- {insight}")
+
+    profile_report = build_numeric_profile_report(
+    profile_test_df,
+    "SalePrice"
+    )
+
+    print("\nNumeric Profile Report:\n")
+    print(profile_report)
+
+    skewed_test_df = pd.DataFrame({
+        "SalePrice": [
+            100000,
+            110000,
+            120000,
+            130000,
+            140000,
+            150000,
+            160000,
+            2000000
+        ]
+    })
+
+    skewed_profile = calculate_numeric_profile(
+        skewed_test_df,
+        "SalePrice"
+    )
+
+    print("\nSkewed Profile:")
+    print(skewed_profile)
+
+    print("\nSkewed Profile Insights:")
+
+    skewed_insights = interpret_numeric_profile(
+        skewed_profile
+    )
+
+    for insight in skewed_insights:
+        print(f"- {insight}")
+
+    skewed_report = build_numeric_profile_report(
+    skewed_test_df,
+    "SalePrice"
+    )
+
+    print(skewed_report)
+
+    profile_type_questions = [
+    "Analyze SalePrice",
+    "Give me an analysis of SalePrice",
+    "Summarize SalePrice",
+    "Give me a statistical summary of SalePrice",
+    "Show me descriptive statistics for SalePrice",
+    "Give me a numeric profile of SalePrice",
+    "What is the average SalePrice?",
+    "What is the median SalePrice?",
+    "What is the standard deviation of SalePrice?",
+    "What is the 75th percentile of SalePrice?"
+    ]
+
+    for question in profile_type_questions:
+        result = detect_query_type(question)
+        print(f"{question} -> {result}")
