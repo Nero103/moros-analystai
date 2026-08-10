@@ -8,7 +8,11 @@ from data_utils import (
     build_median_report, build_row_count_report, 
     is_row_count_question, find_value_in_question, 
     build_value_count_report, find_alias_value_in_question,
-    build_standard_deviation_report, 
+    build_standard_deviation_report, build_variance_report,
+    build_distribution_report, find_columns_in_question,
+    build_correlation_report, build_missing_values_report,
+    build_sum_report, extract_percentile, 
+    build_percentile_report,
     )
 
 # ------------------------
@@ -23,6 +27,37 @@ def analyze_text(df, question):
         return build_row_count_report(df)
 
     matched_column = find_column_in_question(df, question)
+
+    # CORRELATION
+
+    if query_type == "correlation":
+        matched_columns = find_columns_in_question(
+            df,
+            question
+        )
+
+        if len(matched_columns) != 2:
+            return (
+                "I detected a correlation question, but I need exactly "
+                "two dataset columns to calculate the correlation."
+            )
+
+        column_x, column_y = matched_columns
+
+        correlation_report = build_correlation_report(
+            df,
+            column_x,
+            column_y
+        )
+
+        if correlation_report is None:
+            return (
+                f"I found the columns '{column_x}' and '{column_y}', "
+                "but they do not contain enough paired numeric values "
+                "for a correlation calculation."
+            )
+
+        return correlation_report
 
     # STANDARD DEVIATION
 
@@ -45,6 +80,81 @@ def analyze_text(df, question):
             )
 
         return std_report
+
+    # VARIANCE
+
+    if query_type == "variance":
+        if matched_column is None:
+            return (
+                "I detected a variance question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        variance_report = build_variance_report(
+            df,
+            matched_column
+        )
+
+        if variance_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain enough usable numeric values."
+            )
+
+        return variance_report
+
+    # DISTRIBUTION
+
+    if query_type == "distribution":
+        if matched_column is None:
+            return (
+                "I detected a distribution question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        distribution_report = build_distribution_report(
+            df,
+            matched_column
+        )
+
+        if distribution_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain usable values for a distribution."
+            )
+
+        return distribution_report
+
+    # PERCENTILE / QUANTILE
+
+    if query_type == "percentile":
+        if matched_column is None:
+            return (
+                "I detected a percentile question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        percentile = extract_percentile(question)
+
+        if percentile is None:
+            return (
+                "I detected a percentile question, but I could not "
+                "identify the requested percentile."
+            )
+
+        percentile_report = build_percentile_report(
+            df,
+            matched_column,
+            percentile
+        )
+
+        if percentile_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain usable numeric values for a percentile calculation."
+            )
+
+        return percentile_report
 
     # MEDIAN
 
@@ -140,23 +250,50 @@ def analyze_text(df, question):
             question
         )
 
-    if matched_value is None:
-        matched_value = find_alias_value_in_question(
+        if matched_value is None:
+            matched_value = find_alias_value_in_question(
+                df,
+                question
+            )
+
+        if matched_value is not None:
+            matched_value_column, matched_value_value = matched_value
+
+            value_count_report = build_value_count_report(
+                df,
+                matched_value_column,
+                matched_value_value
+            )
+
+            if value_count_report is not None:
+                return value_count_report
+
+    # MISSING VALUES
+
+    if query_type == "missing_values":
+        return build_missing_values_report(df)
+
+    # SUM / TOTAL
+
+    if query_type == "sum":
+        if matched_column is None:
+            return (
+                "I detected a sum question, but I could not "
+                "identify the requested dataset column."
+            )
+
+        sum_report = build_sum_report(
             df,
-            question
+            matched_column
         )
 
-    if matched_value is not None:
-        matched_value_column, matched_value_value = matched_value
+        if sum_report is None:
+            return (
+                f"I found the column '{matched_column}', but it does not "
+                "contain usable numeric values for a sum."
+            )
 
-        value_count_report = build_value_count_report(
-            df,
-            matched_value_column,
-            matched_value_value
-        )
-
-        if value_count_report is not None:
-            return value_count_report
+        return sum_report
 
 
     dataset_profile = build_dataset_profile(df)
