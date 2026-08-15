@@ -1074,6 +1074,121 @@ def build_percentile_report(df: pd.DataFrame, column: str, percentile: float) ->
     )
 
 # ----------------------
+# SKEWNESS
+# ----------------------
+
+def calculate_skewness(df: pd.DataFrame, column: str) -> Optional[float]:
+    if column not in df.columns:
+        return None
+
+    numeric_values = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    ).dropna()
+
+    if len(numeric_values) < 3:
+        return None
+
+    skewness = numeric_values.skew()
+
+    if pd.isna(skewness):
+        return None
+
+    return float(skewness)
+
+def interpret_skewness(skewness_value: float) -> str:
+    absolute_skew = abs(skewness_value)
+
+    if absolute_skew < 0.5:
+        strength = "approximately symmetric"
+
+    elif absolute_skew < 1.0:
+        strength = "moderately skewed"
+    else:
+        strength = "strongly skewed"
+
+    if absolute_skew < 0.5:
+        return strength
+
+    if skewness_value > 0:
+        direction = "right"
+    else:
+        direction = "left"
+
+    return f"{strength} to the {direction}"
+
+# ---------------------------
+# IQR
+# ---------------------------
+
+def calculate_iqr_outliers(df: pd.DataFrame, column: str) -> Optional[dict]:
+    if column not in df.columns:
+        return None
+
+    numeric_values = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    ).dropna()
+
+    if len(numeric_values) < 4:
+        return None
+
+    q1 = numeric_values.quantile(0.25)
+    q3 = numeric_values.quantile(0.75)
+
+    iqr = q3 - q1
+
+    lower_bound = q1 - (1.5 * iqr)
+    upper_bound = q3 + (1.5 * iqr)
+
+    outliers = numeric_values[
+        (numeric_values < lower_bound) |
+        (numeric_values > upper_bound)
+    ]
+
+    outlier_count = int(len(outliers))
+    valid_count = int(len(numeric_values))
+
+    outlier_percentage = (
+        outlier_count / valid_count
+        ) * 100
+
+    return {
+        "iqr": float(iqr),
+        "lower_bound": float(lower_bound),
+        "upper_bound": float(upper_bound),
+        "outlier_count": outlier_count,
+        "outlier_percentage": float(outlier_percentage),
+    }
+
+def interpret_iqr_outliers(outlier_result: dict) -> str:
+    outlier_count = outlier_result["outlier_count"]
+    outlier_percentage = outlier_result["outlier_percentage"]
+
+    if outlier_count == 0:
+        return (
+            "No statistical outliers were detected using "
+            "the 1.5 x IQR rule."
+        )
+
+    if outlier_count == 1:
+        return (
+            f"**1 statistical outlier** was detected "
+            f"({outlier_percentage:.2f}% of valid values) using the "
+            f"1.5 x IQR rule."
+        )
+
+    return (
+        f"**{outlier_count:,} statistical outliers** were detected "
+        f"({outlier_percentage:.2f}% of valid values) using the "
+        f"1.5 x IQR rule."
+    )
+
+
+
+
+
+# ----------------------
 # NUMERIC PROFILE
 # ----------------------
 
@@ -1093,6 +1208,8 @@ def calculate_numeric_profile(df: pd.DataFrame, column: str) -> Optional[dict]:
     
     missing_count = int(df[column].isna().sum())
 
+    outlier_result = calculate_iqr_outliers(df, column)
+
     return {
         "count": valid_count,
         "missing": missing_count,
@@ -1103,6 +1220,8 @@ def calculate_numeric_profile(df: pd.DataFrame, column: str) -> Optional[dict]:
         "std_dev": calculate_standard_deviation(df, column),
         "q1": calculate_percentile(df, column, 25),
         "q3": calculate_percentile(df, column, 75),
+        "skewness": calculate_skewness(df, column),
+        "outliers": outlier_result,
     }
 
 # --------------------------
@@ -1122,29 +1241,31 @@ def interpret_numeric_profile(profile: dict, formatter = None) -> list:
     std_dev = profile["std_dev"]
     q1 = profile["q1"]
     q3 = profile["q3"]
+    skewness = profile.get("skewness")
+    outlier_result = profile.get("outliers")
 
-    # Mean vs median
-    if mean_value is not None and median_value is not None:
-        if median_value != 0:
-            relative_difference = (
-                abs(mean_value - median_value)
-                / abs(median_value)
-            )
+    # Measured skewness
+    if skewness is not None:
+        skew_interpretation = interpret_skewness(
+            skewness
+        )
 
-            if relative_difference >= 0.20:
-                if mean_value > median_value:
-                    insights.append(
-                        "The mean is substantially higher than the median, "
-                        "which may indicate right-skew or influence from "
-                        "large values."
-                    )
-                else:
-                    insights.append(
-                        "The mean is substantially lower than the median, "
-                        "which may indicate left-skew or influence from "
-                        "small values."
-                    )
+        insights.append(
+            f"The distribution is **{skew_interpretation}** "
+            f"(skewness = **{skewness:.2f}**)."
+        )
 
+    # IQR-based outlier interpretation
+    if outlier_result is not None:
+        outlier_interpretation = interpret_iqr_outliers(
+            outlier_result
+        )
+
+        insights.append(
+            outlier_interpretation
+        )
+
+    
     # Middle 50%
     if q1 is not None and q3 is not None:
         insights.append(
@@ -1183,8 +1304,15 @@ def build_numeric_profile_report(df: pd.DataFrame, column: str) -> Optional[str]
     if profile is None:
         return None
 
+    # Currency Formatter
     def format_value(value: float) -> str:
+        if abs(value) < 0.005:
+            value = 0.0
+
         if normalize_text(column) == "sale price":
+            if value < 0:
+                return f"-\\${abs(value):,.2f}"
+
             return f"\\${value:,.2f}"
 
         return f"{value:,.2f}"
@@ -1201,6 +1329,14 @@ def build_numeric_profile_report(df: pd.DataFrame, column: str) -> Optional[str]
     std_dev = format_value(profile["std_dev"])
     q1 = format_value(profile["q1"])
     q3 = format_value(profile["q3"])
+    skewness = profile.get("skewness")
+    outlier_result = profile.get("outliers")
+
+
+    if skewness is not None:
+        skewness_display = f"{skewness:.2f}"
+    else:
+        skewness_display = "N/A"
 
     if insights:
         insight_text = "\n".join(
@@ -1212,6 +1348,40 @@ def build_numeric_profile_report(df: pd.DataFrame, column: str) -> Optional[str]
             "- No additional deterministic interpretation "
             "was generated."
         )
+
+    if outlier_result is not None:
+        iqr_display = format_value(
+            outlier_result["iqr"]
+        )
+
+        lower_bound_display = format_value(
+            outlier_result["lower_bound"]
+        )
+
+        upper_bound_display = format_value(
+            outlier_result["upper_bound"]
+        )
+
+        outlier_count = outlier_result[
+            "outlier_count"
+        ]
+
+        outlier_percentage = outlier_result[
+            "outlier_percentage"
+        ]
+
+        outlier_section = f"""
+
+## Outlier Analysis
+
+- **IQR:** {iqr_display}
+- **Lower fence:** {lower_bound_display}
+- **Upper fence:** {upper_bound_display}
+- **Statistical outliers:** {outlier_count:,}
+- **Outlier percentage:** {outlier_percentage:.2f}%
+"""
+    else:
+        outlier_section = ""
 
     return f"""
 ## Executive Answer
@@ -1231,7 +1401,9 @@ The numeric profile for **{column}** was calculated from **{profile["count"]:,} 
 - **Q3 (75th percentile):** {q3}
 - **Maximum:** {maximum}
 - **Standard deviation:** {std_dev}
+- **Skewness:** {skewness_display}
 - **Missing values:** {profile["missing"]:,}
+{outlier_section}
 
 ## Data Evidence
 
@@ -2203,3 +2375,201 @@ if __name__ == "__main__":
     for question in profile_type_questions:
         result = detect_query_type(question)
         print(f"{question} -> {result}")
+
+    # SKEWNESS
+
+    skewness_test_df = pd.DataFrame({
+    "Symmetric": [
+        1, 2, 3, 4, 5
+    ],
+    "RightSkewed": [
+        1, 1, 2, 2, 10
+    ],
+    "LeftSkewed": [
+        1, 9, 9, 10, 10
+    ],
+    "Category": [
+        "A", "B", "C", "D", "E"
+    ]
+    })
+
+    symmetric_skew = calculate_skewness(
+        skewness_test_df,
+        "Symmetric"
+    )
+
+    right_skew = calculate_skewness(
+        skewness_test_df,
+        "RightSkewed"
+    )
+
+    left_skew = calculate_skewness(
+        skewness_test_df,
+        "LeftSkewed"
+    )
+
+    category_skew = calculate_skewness(
+        skewness_test_df,
+        "Category"
+    )
+
+    missing_skew = calculate_skewness(
+        skewness_test_df,
+        "NotAColumn"
+    )
+
+    print(f"Symmetric skewness -> {symmetric_skew}")
+    print(f"Right-skewed skewness -> {right_skew}")
+    print(f"Left-skewed skewness -> {left_skew}")
+    print(f"Category skewness -> {category_skew}")
+    print(f"Missing column skewness -> {missing_skew}")
+
+    # SKEWNESS CLASIFY
+
+    skewness_interpretation_tests = [
+    0.0,
+    0.30,
+    -0.30,
+    0.70,
+    -0.70,
+    2.1416,
+    -2.1416
+    ]
+
+    for value in skewness_interpretation_tests:
+        result = interpret_skewness(value)
+        print(f"{value} -> {result}")
+
+    # SKEWNESS PROFILE TEST
+
+    right_skewed_profile = calculate_numeric_profile(
+    skewness_test_df,
+    "RightSkewed"
+    )
+
+    print("\nRight-skewed profile:")
+    print(right_skewed_profile)
+
+    # SKEWNESS TEST ON INTRPRETER
+
+    right_skewed_profile = calculate_numeric_profile(
+    skewness_test_df,
+    "RightSkewed"
+    )
+
+    right_skewed_insights = interpret_numeric_profile(
+        right_skewed_profile
+    )
+
+    for insight in right_skewed_insights:
+        print(f"- {insight}")
+
+    # SKEWNESS REPORT TEST
+
+    skewed_report = build_numeric_profile_report(
+    skewness_test_df,
+    "RightSkewed"
+    )
+
+    print(skewed_report)
+
+    # IQR TEST
+
+    outlier_test_df = pd.DataFrame({
+    "Normal": [
+        10, 11, 12, 13, 14,
+        15, 16, 17, 18, 19
+    ],
+    "WithOutlier": [
+        10, 11, 12, 13, 14,
+        15, 16, 17, 18, 100
+    ],
+    "Category": [
+        "A", "B", "C", "D", "E",
+        "F", "G", "H", "I", "J"
+        ]
+    })
+
+    normal_outliers = calculate_iqr_outliers(
+        outlier_test_df,
+        "Normal"
+    )
+
+    detected_outliers = calculate_iqr_outliers(
+        outlier_test_df,
+        "WithOutlier"
+    )
+
+    category_outliers = calculate_iqr_outliers(
+        outlier_test_df,
+        "Category"
+    )
+
+    missing_outliers = calculate_iqr_outliers(
+        outlier_test_df,
+        "NotAColumn"
+    )
+
+    print(f"Normal -> {normal_outliers}")
+    print(f"With outlier -> {detected_outliers}")
+    print(f"Category -> {category_outliers}")
+    print(f"Missing column -> {missing_outliers}")
+
+    # IQR INTRPRETER
+
+    normal_interpretation = interpret_iqr_outliers(
+    normal_outliers
+    )
+
+    outlier_interpretation = interpret_iqr_outliers(
+        detected_outliers
+    )
+
+    print(f"Normal -> {normal_interpretation}")
+    print(f"With outlier -> {outlier_interpretation}")
+
+    # IQR RESULT TEST
+
+    normal_profile = calculate_numeric_profile(
+    outlier_test_df,
+    "Normal"
+    )
+
+    print("\nNormal profile:")
+    print(normal_profile)
+
+    # OUTLIER TEST
+
+    normal_insights = interpret_numeric_profile(
+    normal_profile
+    )
+
+    print("Normal insights:")
+
+    for insight in normal_insights:
+        print(f"- {insight}")
+
+    # OUTLIER COLUMN
+
+    outlier_profile = calculate_numeric_profile(
+    outlier_test_df,
+    "WithOutlier"
+    )
+
+    outlier_insights = interpret_numeric_profile(
+        outlier_profile
+    )
+
+    print("\nOutlier insights:")
+
+    for insight in outlier_insights:
+        print(f"- {insight}")
+
+    # OUTLIER REPORT TEST
+
+    outlier_report = build_numeric_profile_report(
+    outlier_test_df,
+    "WithOutlier"
+    )
+
+    print(outlier_report)
