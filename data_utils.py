@@ -98,6 +98,11 @@ def detect_query_type(question: str) -> str:
     question = question.lower().strip()
     question_tokens = set(question.split())
 
+    # COVARIANCE
+
+    if "covariance" in question or "covary" in question or "covar" in question:
+        return "covariance"
+
     # CORRELATION
 
     if any(word in question for word in [
@@ -1184,6 +1189,145 @@ def interpret_iqr_outliers(outlier_result: dict) -> str:
         f"1.5 x IQR rule."
     )
 
+# ---------------------------
+# COVARAINCE
+# ---------------------------
+
+def calculate_covariance(df: pd.DataFrame, column_x: str, column_y: str) -> Optional[float]:
+    if column_x not in df.columns or column_y not in df.columns:
+        return None
+
+    numeric_x = pd.to_numeric(
+        df[column_x],
+        errors = "coerce"
+    )
+
+    numeric_y = pd.to_numeric(
+        df[column_y],
+        errors = "coerce"
+    )
+
+    valid_pairs = numeric_x.notna() & numeric_y.notna()
+
+    if valid_pairs.sum() < 2:
+        return None
+
+    covariance = numeric_x[valid_pairs].cov(numeric_y[valid_pairs])
+
+    if pd.isna(covariance):
+        return None
+
+    return float(covariance)
+
+def interpret_covariance(covariance_value: float) -> str:
+    if covariance_value > 0:
+        return "positive covariance"
+
+    if covariance_value < 0:
+        return "negative covariance"
+
+    return "no covariance"
+
+def build_covariance_report(df: pd.DataFrame, column_x: str, column_y: str) -> Optional[str]:
+    
+    covariance = calculate_covariance(
+        df, column_x, column_y
+    )
+
+    if covariance is None:
+        return None
+
+    numeric_x = pd.to_numeric(
+        df[column_x],
+        errors = "coerce"
+    )
+
+    numeric_y = pd.to_numeric(
+        df[column_y],
+        errors = "coerce"
+    )
+
+    valid_pairs = int((numeric_x.notna() & numeric_y.notna()).sum())
+
+    interpretation = interpret_covariance(
+        covariance
+    )
+
+    if covariance > 0:
+        relationship_text = ("the variables tend to move in the same direction")
+
+    elif covariance < 0:
+        relationship_text = ("the variables tend to move in opposite directions")
+
+    else:
+        relationship_text = ("no linear co-movement was detected")
+
+    return f"""
+    ## Executive Answer
+
+The sample covariance between **{column_x}** and **{column_y}** is **{covariance:,.4f}**, indicating **{interpretation}**; {relationship_text}.
+
+## Data Evidence
+
+- **Column 1:** {column_x}
+- **Column 2:** {column_y}
+- **Valid paired records evaluated:** {valid_pairs:,}
+- **Calculation:** Pandas sample covariance
+
+## Confidence
+
+- **Level:** High
+- **Reason:** The covariance was calculated directly from paired numeric values in the uploaded dataset using Python.
+""".strip()
+
+# ------------------------
+# COEFFICIENT OF VARIANCE
+# ------------------------
+
+def calculate_coefficient_of_variation(df: pd.DataFrame, column: str) -> Optional[str]:
+    if column not in df.columns:
+        return None
+
+    numeric_values = pd.to_numeric(
+        df[column],
+        errors = "coerce"
+    )
+
+    if len(numeric_values) < 2:
+        return None
+
+    mean_value = numeric_values.mean()
+
+    if mean_value == 0:
+        return None
+    
+    std_dev = numeric_values.std()
+
+    if pd.isna(std_dev):
+        return None
+
+    coefficient_of_variation = (
+        std_dev / abs(mean_value)
+    )
+
+    return float(coefficient_of_variation)
+
+def interpret_coefficient_of_variation(cv_value: float) -> str:
+
+    cv_percentage = cv_value * 100
+
+    return (
+        f"The standard deviation is approximately "
+        f"{cv_percentage:.2f}% of the mean."
+    )
+
+
+
+    
+
+
+
+
 
 
 
@@ -1221,6 +1365,7 @@ def calculate_numeric_profile(df: pd.DataFrame, column: str) -> Optional[dict]:
         "q1": calculate_percentile(df, column, 25),
         "q3": calculate_percentile(df, column, 75),
         "skewness": calculate_skewness(df, column),
+        "coefficient_of_variation": calculate_coefficient_of_variation(df, column),
         "outliers": outlier_result,
     }
 
@@ -1234,6 +1379,7 @@ def interpret_numeric_profile(profile: dict, formatter = None) -> list:
 
     insights = []
 
+    cv_value = profile.get("coefficient_of_variation")
     mean_value = profile["mean"]
     median_value = profile["median"]
     minimum = profile["minimum"]
@@ -1280,17 +1426,14 @@ def interpret_numeric_profile(profile: dict, formatter = None) -> list:
             f"to {formatter(maximum)}."
         )
 
-    # Standard deviation
-    if std_dev is not None and mean_value not in (None, 0):
-        coefficient_of_variation = abs(
-            std_dev / mean_value
+    if cv_value is not None:
+        cv_interpretation = interpret_coefficient_of_variation(
+            cv_value
         )
 
-        if coefficient_of_variation >= 1:
-            insights.append(
-                "The standard deviation is large relative to the mean, "
-                "indicating substantial variability."
-            )
+        insights.append(
+            cv_interpretation
+        )
 
     return insights
 
@@ -1331,7 +1474,12 @@ def build_numeric_profile_report(df: pd.DataFrame, column: str) -> Optional[str]
     q3 = format_value(profile["q3"])
     skewness = profile.get("skewness")
     outlier_result = profile.get("outliers")
+    cv_value = profile.get("coefficient_of_variation")
 
+    if cv_value is not None:
+        cv_display = f"{cv_value * 100:.2f}%"
+    else:
+        cv_display = "N/A"
 
     if skewness is not None:
         skewness_display = f"{skewness:.2f}"
@@ -1401,6 +1549,7 @@ The numeric profile for **{column}** was calculated from **{profile["count"]:,} 
 - **Q3 (75th percentile):** {q3}
 - **Maximum:** {maximum}
 - **Standard deviation:** {std_dev}
+- **Coefficient of variation:** {cv_display}
 - **Skewness:** {skewness_display}
 - **Missing values:** {profile["missing"]:,}
 {outlier_section}
@@ -2573,3 +2722,204 @@ if __name__ == "__main__":
     )
 
     print(outlier_report)
+
+    # COVARIANCE
+
+    covariance_test_df = pd.DataFrame({
+    "Advertising": [10, 20, 30, 40, 50],
+    "Sales": [100, 200, 300, 400, 500],
+    "Inverse": [500, 400, 300, 200, 100],
+    "Category": ["A", "B", "C", "D", "E"]
+    })
+
+    positive_covariance = calculate_covariance(
+        covariance_test_df,
+        "Advertising",
+        "Sales"
+    )
+
+    negative_covariance = calculate_covariance(
+        covariance_test_df,
+        "Advertising",
+        "Inverse"
+    )
+
+    category_covariance = calculate_covariance(
+        covariance_test_df,
+        "Advertising",
+        "Category"
+    )
+
+    missing_covariance = calculate_covariance(
+        covariance_test_df,
+        "Advertising",
+        "NotAColumn"
+    )
+
+    print(
+        f"Advertising vs Sales covariance -> "
+        f"{positive_covariance}"
+    )
+
+    print(
+        f"Advertising vs Inverse covariance -> "
+        f"{negative_covariance}"
+    )
+
+    print(
+        f"Advertising vs Category covariance -> "
+        f"{category_covariance}"
+    )
+
+    print(
+        f"Missing column covariance -> "
+        f"{missing_covariance}"
+    )
+
+    # COVARIANCE INTERPRET
+
+    covariance_interpretation_tests = [
+    2500.0,
+    -2500.0,
+    0.0
+    ]
+
+    for value in covariance_interpretation_tests:
+        result = interpret_covariance(value)
+        print(f"{value} -> {result}")
+
+    # COVARIANCE QUERY DETECT
+
+    test_questions = [
+    "What is the covariance between Advertising and Sales?",
+    "Calculate the covariance of radius mean and texture mean",
+    "How do Advertising and Sales covary?",
+    "What is the correlation between Advertising and Sales?",
+    "Are radius mean and texture mean correlated?",
+    "What is the average SalePrice?"
+    ]
+
+    for question in test_questions:
+        print(
+            f"{question} -> "
+            f"{detect_query_type(question)}"
+        )
+
+    # COVARIANCE REPORT TEST
+
+    positive_covariance_report = build_covariance_report(
+    covariance_test_df,
+    "Advertising",
+    "Sales"
+    )
+
+    negative_covariance_report = build_covariance_report(
+        covariance_test_df,
+        "Advertising",
+        "Inverse"
+    )
+
+    print("Positive covariance report:\n")
+    print(positive_covariance_report)
+
+    print("\nNegative covariance report:\n")
+    print(negative_covariance_report)
+
+    # COEFFICIENT OF VARIATION
+
+    cv_test_df = pd.DataFrame({
+    "LowVariation": [
+        90, 95, 100, 105, 110
+    ],
+    "HighVariation": [
+        10, 50, 100, 150, 190
+    ],
+    "ZeroMean": [
+        -2, -1, 0, 1, 2
+    ],
+    "Category": [
+        "A", "B", "C", "D", "E"
+    ]
+    })
+
+    low_cv = calculate_coefficient_of_variation(
+        cv_test_df,
+        "LowVariation"
+    )
+
+    high_cv = calculate_coefficient_of_variation(
+        cv_test_df,
+        "HighVariation"
+    )
+
+    zero_mean_cv = calculate_coefficient_of_variation(
+        cv_test_df,
+        "ZeroMean"
+    )
+
+    category_cv = calculate_coefficient_of_variation(
+        cv_test_df,
+        "Category"
+    )
+
+    missing_cv = calculate_coefficient_of_variation(
+        cv_test_df,
+        "NotAColumn"
+    )
+
+    print(f"Low variation CV -> {low_cv}")
+    print(f"High variation CV -> {high_cv}")
+    print(f"Zero mean CV -> {zero_mean_cv}")
+    print(f"Category CV -> {category_cv}")
+    print(f"Missing column CV -> {missing_cv}")
+
+    # COEFFICIENT OF VARIATION INTERPRETER
+
+    cv_interpretation_tests = [
+    0.0790569415,
+    0.7280109889,
+    1.25
+    ]
+
+    for value in cv_interpretation_tests:
+        result = interpret_coefficient_of_variation(
+            value
+        )
+        print(f"{value} -> {result}")
+
+    # COEFFICIENT OF VARIATION NUMERIC DETECTOR
+    
+    low_variation_profile = calculate_numeric_profile(
+    cv_test_df,
+    "LowVariation"
+    )
+
+    high_variation_profile = calculate_numeric_profile(
+        cv_test_df,
+        "HighVariation"
+    )
+
+    low_variation_insights = interpret_numeric_profile(
+        low_variation_profile
+    )
+
+    high_variation_insights = interpret_numeric_profile(
+        high_variation_profile
+    )
+
+    print("Low variation insights:")
+    for insight in low_variation_insights:
+        print(f"- {insight}")
+
+    print("\nHigh variation insights:")
+    for insight in high_variation_insights:
+        print(f"- {insight}")
+
+    # HIGH TEST
+
+    high_variation_report = build_numeric_profile_report(
+    cv_test_df,
+    "HighVariation"
+    )
+
+    print(high_variation_report)

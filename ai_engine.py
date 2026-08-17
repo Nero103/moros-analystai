@@ -13,6 +13,7 @@ from data_utils import (
     build_correlation_report, build_missing_values_report,
     build_sum_report, extract_percentile, 
     build_percentile_report, build_numeric_profile_report,
+    build_covariance_report,
     )
 
 # ------------------------
@@ -27,6 +28,37 @@ def analyze_text(df, question):
         return build_row_count_report(df)
 
     matched_column = find_column_in_question(df, question)
+
+    # COVARIANCE
+
+    if query_type == "covariance":
+        matched_columns = find_columns_in_question(
+            df,
+            question
+        )
+
+        if len(matched_columns) != 2:
+            return (
+                "I detected a covariance question, but I need exactly "
+                "two dataset columns to calculate the covariance."
+            )
+
+        column_x, column_y = matched_columns
+
+        covariance_report = build_covariance_report(
+            df,
+            column_x,
+            column_y
+        )
+
+        if covariance_report is None:
+            return (
+                f"I found the columns '{column_x}' and '{column_y}', "
+                "but they do not contain enough paired numeric values "
+                "for a covariance calculation."
+            )
+
+        return covariance_report
 
     # CORRELATION
 
