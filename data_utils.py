@@ -1298,7 +1298,7 @@ def calculate_coefficient_of_variation(df: pd.DataFrame, column: str) -> Optiona
 
     mean_value = numeric_values.mean()
 
-    if mean_value == 0:
+    if mean_value <= 0:
         return None
     
     std_dev = numeric_values.std()
@@ -1307,7 +1307,7 @@ def calculate_coefficient_of_variation(df: pd.DataFrame, column: str) -> Optiona
         return None
 
     coefficient_of_variation = (
-        std_dev / abs(mean_value)
+        std_dev / mean_value
     )
 
     return float(coefficient_of_variation)
@@ -1349,14 +1349,26 @@ def calculate_numeric_profile(df: pd.DataFrame, column: str) -> Optional[dict]:
 
     if valid_count == 0:
         return None
-    
+
+    total_count = len(df[column])
+
     missing_count = int(df[column].isna().sum())
+
+    unusable_count = (total_count - valid_count - missing_count)
+
+    coverage_percentage = ((valid_count / total_count) * 100
+
+    if total_count > 0
+    else 0.0
+    )
 
     outlier_result = calculate_iqr_outliers(df, column)
 
     return {
         "count": valid_count,
         "missing": missing_count,
+        "unusable_count": int(unusable_count),
+        "coverage_percentage": float(coverage_percentage),
         "mean": calculate_average(df, column),
         "median": calculate_median(df, column),
         "minimum": calculate_minimum(df, column),
@@ -1387,6 +1399,41 @@ def interpret_numeric_profile(profile: dict, formatter = None) -> list:
     std_dev = profile["std_dev"]
     q1 = profile["q1"]
     q3 = profile["q3"]
+    valid_count = profile.get("count")
+    unusable_count = profile.get("unusable_count", 0)
+    coverage_percentage = profile.get("coverage_percentage")
+
+    # Constant column
+    if std_dev == 0:
+        return [
+            (
+                "All valid values are identical, so the column "
+                "has no variability."
+            )
+        ]
+
+    # Small sample warning
+    if valid_count is not None and valid_count < 5:
+        insights.append(
+            f"Only **{valid_count:,} valid records** are available, "
+            "so distribution-level interpretations should be treated cautiously."
+        )
+
+    # Limited data coverage
+    if (coverage_percentage is not None and coverage_percentage < 50):
+        insights.append(
+            f"Only **{coverage_percentage:.2f}%** of records contain "
+            "valid numeric values for this column, so the profile "
+            "is based on limited data coverage."
+        )
+
+    # Unusable numeric values
+    if unusable_count > 0:
+        insights.append(
+            f"**{unusable_count:,} values** could not be interpreted "
+            "as numeric and were excluded from the analysis."
+        )
+
     skewness = profile.get("skewness")
     outlier_result = profile.get("outliers")
 
@@ -1426,6 +1473,7 @@ def interpret_numeric_profile(profile: dict, formatter = None) -> list:
             f"to {formatter(maximum)}."
         )
 
+    # Coefficient of variance
     if cv_value is not None:
         cv_interpretation = interpret_coefficient_of_variation(
             cv_value
@@ -1475,6 +1523,8 @@ def build_numeric_profile_report(df: pd.DataFrame, column: str) -> Optional[str]
     skewness = profile.get("skewness")
     outlier_result = profile.get("outliers")
     cv_value = profile.get("coefficient_of_variation")
+    coverage_percentage = profile.get("coverage_percentage")
+    unusable_count = profile.get("unusable_count", 0)
 
     if cv_value is not None:
         cv_display = f"{cv_value * 100:.2f}%"
@@ -1534,7 +1584,7 @@ def build_numeric_profile_report(df: pd.DataFrame, column: str) -> Optional[str]
     return f"""
 ## Executive Answer
 
-The numeric profile for **{column}** was calculated from **{profile["count"]:,} valid records**.
+The numeric profile for **{column}** was calculated from **{profile["count"]:,} valid numeric records**.
 
 ## Key Insights
 
@@ -1551,13 +1601,15 @@ The numeric profile for **{column}** was calculated from **{profile["count"]:,} 
 - **Standard deviation:** {std_dev}
 - **Coefficient of variation:** {cv_display}
 - **Skewness:** {skewness_display}
-- **Missing values:** {profile["missing"]:,}
 {outlier_section}
 
 ## Data Evidence
 
 - **Column:** {column}
-- **Valid records evaluated:** {profile["count"]:,}
+- **Valid numeric records evaluated:** {profile["count"]:,}
+- **Missing values:** {profile["missing"]:,}
+- **Unusable nonnumeric values:** {unusable_count:,}
+- **Numeric coverage:** {coverage_percentage:.2f}%
 - **Calculation:** Deterministic Pandas descriptive statistics
 
 ## Confidence
@@ -2923,3 +2975,201 @@ if __name__ == "__main__":
     )
 
     print(high_variation_report)
+
+    #------------------------------
+    # EDGE CASE TEST
+    #------------------------------
+
+    constant_test_df = pd.DataFrame({
+    "Constant": [100, 100, 100, 100, 100]
+    })
+
+    constant_profile = calculate_numeric_profile(
+        constant_test_df,
+        "Constant"
+    )
+
+    print("Constant profile:")
+    print(constant_profile)
+
+    print("\nConstant insights:")
+    for insight in interpret_numeric_profile(constant_profile):
+        print(f"- {insight}")
+
+    constant_profile = calculate_numeric_profile(
+    constant_test_df,
+    "Constant"
+    )
+
+    print("Constant insights:")
+
+    for insight in interpret_numeric_profile(
+        constant_profile
+    ):
+        print(f"- {insight}")
+
+    # ALL ZERO
+
+    zero_test_df = pd.DataFrame({
+    "AllZero": [0, 0, 0, 0, 0]
+    })
+
+    zero_profile = calculate_numeric_profile(
+        zero_test_df,
+        "AllZero"
+    )
+
+    print("Zero profile:")
+    print(zero_profile)
+
+    print("\nZero insights:")
+    for insight in interpret_numeric_profile(
+        zero_profile
+    ):
+        print(f"- {insight}")
+
+    # NEGATIVE VALUES
+
+    negative_test_df = pd.DataFrame({
+    "NegativeValues": [-100, -80, -60, -40, -20]
+    })
+
+    negative_profile = calculate_numeric_profile(
+        negative_test_df,
+        "NegativeValues"
+    )
+
+    print("Negative profile:")
+    print(negative_profile)
+
+    print("\nNegative insights:")
+    for insight in interpret_numeric_profile(
+        negative_profile
+    ):
+        print(f"- {insight}")
+
+    #------------------------
+    # MISSING VALUES TEST
+    #------------------------
+
+    missing_heavy_test_df = pd.DataFrame({
+    "MostlyMissing": [
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        10,
+        20,
+        30
+    ]
+    })
+
+    missing_heavy_profile = calculate_numeric_profile(
+        missing_heavy_test_df,
+        "MostlyMissing"
+    )
+
+    print("Mostly-missing profile:")
+    print(missing_heavy_profile)
+
+    print("\nMostly-missing insights:")
+    for insight in interpret_numeric_profile(
+        missing_heavy_profile
+    ):
+        print(f"- {insight}")
+
+    # HARDENING CASE - TINY SAMPLE SIZE
+
+    tiny_sample_test_df = pd.DataFrame({
+    "TinySample": [10, 20]
+    })
+
+    tiny_profile = calculate_numeric_profile(
+        tiny_sample_test_df,
+        "TinySample"
+    )
+
+    print("Tiny sample profile:")
+    print(tiny_profile)
+
+    print("\nTiny sample insights:")
+    for insight in interpret_numeric_profile(
+        tiny_profile
+    ):
+        print(f"- {insight}")
+
+    #----------------------
+    #MIXED VALUES IN COLUMN TEST
+    #--------------------------
+
+    mixed_numeric_test_df = pd.DataFrame({
+    "MixedNumeric": [
+        "10",
+        "20",
+        "30",
+        "N/A",
+        "40",
+        "not available",
+        "50"
+    ]
+    })
+
+    mixed_profile = calculate_numeric_profile(
+        mixed_numeric_test_df,
+        "MixedNumeric"
+    )
+
+    print("Mixed numeric profile:")
+    print(mixed_profile)
+
+    print("\nMixed numeric insights:")
+    for insight in interpret_numeric_profile(
+        mixed_profile
+    ):
+        print(f"- {insight}")
+
+    mixed_report = build_numeric_profile_report(
+    mixed_numeric_test_df,
+    "MixedNumeric"
+    )
+
+    print(mixed_report)
+
+    #-----------------------------
+    # BIG NUMBER TEST
+    #----------------------------
+
+    extreme_test_df = pd.DataFrame({
+    "ExtremeValues": [
+        1e3,
+        1e6,
+        1e9,
+        1e12,
+        1e15
+    ]
+    })
+
+    extreme_profile = calculate_numeric_profile(
+        extreme_test_df,
+        "ExtremeValues"
+    )
+
+    print("Extreme profile:")
+    print(extreme_profile)
+
+    print("\nExtreme insights:")
+    for insight in interpret_numeric_profile(
+        extreme_profile
+    ):
+        print(f"- {insight}")
+
+    print("\nExtreme report:")
+    print(
+        build_numeric_profile_report(
+            extreme_test_df,
+            "ExtremeValues"
+        )
+    )
