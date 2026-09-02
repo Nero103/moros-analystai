@@ -3,6 +3,7 @@ import pandas as pd
 import time
 from ai_engine import analyze_text, analyze_pdf, format_report
 from document_utils import extract_pdf_text
+from data_utils import load_excel_file, get_excel_sheet_names
 from config import MODEL, PDF_LIMIT
 
 st.set_page_config(
@@ -11,6 +12,83 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ---------------------------
+# STRUCTURED DATA ANALYSIS UI
+# ---------------------------
+
+def render_structured_analysis(
+    df: pd.DataFrame,
+    file_type: str,
+    user_question: str
+):
+    analysis_placeholder = st.empty()
+
+    if st.button(
+        f"Generate {file_type} Analysis"
+    ):
+        with st.spinner(
+            f"Analyzing {file_type.lower()} data..."
+        ):
+            start_time = time.perf_counter()
+
+            question = (
+                user_question
+                if user_question
+                else "What stands out in this dataset?"
+            )
+
+            brief = analyze_text(
+                df,
+                question
+            )
+
+            processing_time = (
+                time.perf_counter() - start_time
+            )
+
+        st.subheader("Analysis Brief")
+        st.success("✅ Analysis Complete")
+
+        sumcol1, sumcol2, sumcol3, sumcol4, sumcol5 = st.columns(5)
+
+        with sumcol1:
+            st.metric("File Type", file_type)
+
+        with sumcol2:
+            st.metric("Rows", len(df))
+
+        with sumcol3:
+            st.metric("AI Model", MODEL)
+
+        with sumcol4:
+            st.metric(
+                "Time",
+                f"{processing_time:.1f}s"
+            )
+
+        with sumcol5:
+            st.metric("Status", "Complete")
+
+        with analysis_placeholder.container():
+
+            st.markdown(
+                "### 📋 Executive Analysis Report"
+            )
+
+            with st.container(border=True):
+                st.markdown(
+                    format_report(brief)
+                )
+
+        st.download_button(
+            label="Download Analysis Brief",
+            data=brief,
+            file_name=(
+                f"analystai_{file_type.lower()}_brief.txt"
+            ),
+            mime="text/plain"
+        )
 
 # ------------------
 # UI
@@ -22,7 +100,7 @@ st.caption("AI-Powered Business & Document Intelligence")
 st.divider()
 
 st.markdown("""
-Upload a **CSV** or **PDF**, ask a question in plain English, and receive a structured, executive insights by a local AI.
+Upload a **CSV**, **Excel workbook**, or **PDF**, ask a question in plain English, and receive structured executive insights from a local AI.
 
 **Built for analysts, business, and decision-making.**
 """)
@@ -74,8 +152,8 @@ with st.sidebar:
 
     st.markdown("### 📂 Upload")
     uploaded_file = st.file_uploader(
-        "Upload a CSV or PDF",
-        type = ["csv", "pdf"]
+        "Upload a CSV, Excel, or PDF",
+        type = ["csv", "xlsx", "pdf"]
     )
 
     st.divider()
@@ -125,55 +203,67 @@ if uploaded_file is not None:
 
             st.subheader("🤖 AI Workspace")
 
-            analysis_placeholder = st.empty()
+            render_structured_analysis(
+                df,
+                "CSV",
+                user_question
+            )
 
-            if st.button("Generate Analyst Brief"):
-                with st.spinner("Analyze data..."):
-                    start_time = time.perf_counter()
-                    
-                    question = (
-                        user_question 
-                        if user_question 
-                        else "What stands out in this dataset?"
-                    )
+    # --------------------
+    # Excel Area
+    #---------------------  
 
-                    brief = analyze_text(df, question)
+    elif uploaded_file .name.endswith(".xlsx"):
 
-                    processing_time = time.perf_counter() - start_time
+        sheet_names = get_excel_sheet_names(
+            uploaded_file
+        )
 
-                st.subheader("Analysis Brief")
+        if sheet_names is None:
+            st.error("Unable to read this Excel workbook.")
 
-                st.success("✅ Analysis Complete")
+        else:
+            st.success("✅ Excel workbook uploaded successfully")
+            st.caption(f"File: {uploaded_file.name}")
 
-                sumcol1, sumcol2, sumcol3, sumcol4, sumcol5 = st.columns(5)
+        selected_sheet = st.selectbox(
+                "Select worksheet",
+                sheet_names
+        )
 
-                with sumcol1:
-                    st.metric("File Type", "CSV")
+        df = load_excel_file(
+            uploaded_file,
+            sheet_name=selected_sheet
+        )
 
-                with sumcol2:
-                    st.metric("Rows", len(df))
+        if df is None:
+            st.error(
+                "Unable to load the selected worksheet."
+            )
 
-                with sumcol3:
-                    st.metric("AI Model", MODEL)
+        else:
+            st.caption(
+                f"Worksheet: {selected_sheet}"
+            )
 
-                with sumcol4:
-                    st.metric("Time", f"{processing_time:.1f}s")
+            st.divider()
 
-                with sumcol5:
-                    st.metric("Status", "Complete")
+            left_col, right_col = st.columns([1, 1])
 
-                with analysis_placeholder.container():
+            with left_col:
+                st.subheader("Excel Preview")
 
-                    st.markdown("### 📋 Executive Analysis Report")
+                st.dataframe(
+                    df.head(3)
+                )
 
-                    with st.container(border= True):
-                        st.markdown(format_report(brief))
+            with right_col:
+                st.subheader("🤖 AI Workspace")
 
-                st.download_button(
-                    label = "Download Analysis Brief",
-                    data = brief,
-                    file_name = "analystai_brief.txt",
-                    mime = "text/plain"
+                render_structured_analysis(
+                    df,
+                    "Excel",
+                    user_question
                 )
 
     # --------------------
@@ -255,11 +345,12 @@ if uploaded_file is not None:
                 )
 
 else:
-    st.info("Upload csv or pdf file to begin analysis.")
+    st.info("Upload a CSV, Excel, or PDF file to begin analysis")
 
     st.markdown("""
     ### What Moros AnalystAI can do:
     - Analyze CSV datasets
+    - Read Excel workbooks and worksheets
     - Summarize PDF documents
     - Answer natural language questions
     - Generate analyst-style reports

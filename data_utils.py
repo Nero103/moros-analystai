@@ -6,6 +6,25 @@ from typing import Optional, Tuple
 # READ DATA
 # ----------------------
 
+def load_excel_file(uploaded_file, sheet_name = 0) -> Optional[pd.DataFrame]:
+    try:
+        df = pd.read_excel(uploaded_file, sheet_name = sheet_name)
+        return df
+    
+    except Exception:
+        return None
+
+def get_excel_sheet_names(uploaded_file) -> Optional[list]:
+    try:
+        excel_file = pd.ExcelFile(
+            uploaded_file
+        )
+
+        return excel_file.sheet_names
+
+    except Exception:
+        return None
+
 def build_dataset_profile(df: pd.DataFrame) -> str:
     profile_sections = []
 
@@ -3173,3 +3192,66 @@ if __name__ == "__main__":
             "ExtremeValues"
         )
     )
+
+    # ----------------------
+    # EXCEL LOAD TEST
+    # ----------------------
+
+    excel_test_df = pd.DataFrame({
+        "SalePrice": [100000, 200000, 300000],
+        "PropertyType": [
+            "ONE FAMILY",
+            "CONDO",
+            "TWO FAMILY"
+        ]
+    })
+
+    excel_test_df.to_excel(
+        "excel_test.xlsx",
+        index=False
+    )
+
+    loaded_excel = load_excel_file(
+        "excel_test.xlsx"
+    )
+
+    print("\nLoaded Excel:")
+    print(loaded_excel)
+
+    # ----------------------
+    # MULTI-SHEET EXCEL TEST
+    # ----------------------
+
+    with pd.ExcelWriter("multi_sheet_test.xlsx") as writer:
+        pd.DataFrame({
+            "Product": ["A", "B", "C"],
+            "Sales": [100, 200, 300]
+        }).to_excel(
+            writer,
+            sheet_name="Sales",
+            index=False
+        )
+
+        pd.DataFrame({
+            "Region": ["North", "South", "West"],
+            "Customers": [25, 30, 40]
+        }).to_excel(
+            writer,
+            sheet_name="Customers",
+            index=False
+        )
+
+    sheet_names = get_excel_sheet_names(
+        "multi_sheet_test.xlsx"
+    )
+
+    print("\nExcel sheets:")
+    print(sheet_names)
+
+    customers_sheet = load_excel_file(
+        "multi_sheet_test.xlsx",
+        sheet_name="Customers"
+    )
+
+    print("\nCustomers sheet:")
+    print(customers_sheet)
