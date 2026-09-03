@@ -121,3 +121,76 @@ def test_invalid_excel_file_returns_none(tmp_path):
     )
 
     assert result is None
+
+def test_empty_excel_sheet_returns_none(tmp_path):
+    file_path = tmp_path / "empty.xlsx"
+
+    df = pd.DataFrame()
+    df.to_excel(
+        file_path,
+        index= False,
+        engine= "openpyxl"
+    )
+
+    result = load_excel_file(file_path)
+
+    assert result is None
+
+def test_header_only_excel_sheet_returns_none(tmp_path):
+    file_path = tmp_path / "headers_only.xlsx"
+
+    df = pd.DataFrame(
+        columns= [
+            "SalePrice",
+            "PropertyType"
+        ]
+    )
+
+    df.to_excel(
+        file_path,
+        index= False,
+        engine= "openpyxl"
+    )
+
+    result = load_excel_file(file_path)
+
+    assert result is None
+
+def test_all_blank_rows_excel_sheet_returns_none(tmp_path):
+    file_path = tmp_path / "blank_rows.xlsx"
+
+    df = pd.DataFrame({
+        "SalePrice": [None, None, None],
+        "PropertyType": [None, None, None]
+    })
+
+    df.to_excel(
+        file_path,
+        index=False,
+        engine="openpyxl"
+    )
+
+    result = load_excel_file(file_path)
+
+    assert result is None
+
+def test_nonexistent_excel_sheet_returns_none(tmp_path):
+    file_path = tmp_path / "workbook.xlsx"
+
+    df = pd.DataFrame({
+        "SalePrice": [100000, 200000, 300000]
+    })
+
+    df.to_excel(
+        file_path,
+        sheet_name="Sales",
+        index=False,
+        engine="openpyxl"
+    )
+
+    result = load_excel_file(
+        file_path,
+        sheet_name="DoesNotExist"
+    )
+
+    assert result is None

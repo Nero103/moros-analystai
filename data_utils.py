@@ -9,6 +9,10 @@ from typing import Optional, Tuple
 def load_excel_file(uploaded_file, sheet_name = 0) -> Optional[pd.DataFrame]:
     try:
         df = pd.read_excel(uploaded_file, sheet_name = sheet_name)
+
+        if df.empty:
+            return None
+
         return df
     
     except Exception:
