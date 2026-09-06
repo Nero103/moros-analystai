@@ -413,10 +413,10 @@ def analyze_text(df, question):
         return f"AI analysis failed. Error: {e}"
 
 # ------------------------
-# PDF ANALSIS PROMPT
+# DOCUMENT ANALSIS PROMPT
 # ------------------------
 
-def analyze_pdf(pdf_text, question):
+def analyze_document(doc_text, question):
     prompt = f"""
     You are a senior reseach and business analyst.
 
@@ -435,7 +435,7 @@ def analyze_pdf(pdf_text, question):
     - Strictly do not treat interpretation as a directly stated fact.
 
     PDF CONTENT:
-    {pdf_text[:8000]}
+    {doc_text[:8000]}
 
     USER QUESTION:
     {question}

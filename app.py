@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import time
-from ai_engine import analyze_text, analyze_pdf, format_report
-from document_utils import extract_pdf_text
+from ai_engine import analyze_text, analyze_document, format_report
+from document_utils import extract_pdf_text, extract_docx_text
 from data_utils import load_excel_file, get_excel_sheet_names
 from config import MODEL, PDF_LIMIT
 
@@ -152,8 +152,8 @@ with st.sidebar:
 
     st.markdown("### 📂 Upload")
     uploaded_file = st.file_uploader(
-        "Upload a CSV, Excel, or PDF",
-        type = ["csv", "xlsx", "pdf"]
+        "Upload a CSV, Excel, PDF, or Word document",
+        type = ["csv", "xlsx", "pdf", "docx"]
     )
 
     st.divider()
@@ -213,7 +213,7 @@ if uploaded_file is not None:
     # Excel Area
     #---------------------  
 
-    elif uploaded_file .name.endswith(".xlsx"):
+    elif uploaded_file.name.endswith(".xlsx"):
 
         sheet_names = get_excel_sheet_names(
             uploaded_file
@@ -307,7 +307,7 @@ if uploaded_file is not None:
                         else "Summarize the key points in this PDF."
                     )
 
-                    pdf_brief = analyze_pdf(pdf_text, question)
+                    pdf_brief = analyze_document(pdf_text, question)
 
                     processing_time = time.perf_counter() - start_time
 
@@ -343,6 +343,95 @@ if uploaded_file is not None:
                     file_name = "analystai_pdf_analysis.txt",
                     mime = "text/plain"
                 )
+
+    # --------------------
+    # Word Area
+    #---------------------
+
+    elif uploaded_file.name.endswith(".docx"):
+
+        st.success("✅ Word document uploaded successfully")
+        st.caption(f"File: {uploaded_file.name}")
+
+        docx_text = extract_docx_text(uploaded_file)
+
+        if docx_text is None:
+            st.error(
+                "Unable to read this Word document or the document is empty."
+            )
+
+        else:
+            st.divider()
+
+            left_col, right_col = st.columns([1, 1])
+
+            with left_col:
+                st.subheader("📄 Word Preview")
+                st.text(docx_text[:2000])
+
+            with right_col:
+                st.subheader("🤖 AI Workspace")
+
+                analysis_placeholder = st.empty()
+
+                if st.button("Generate Word Analysis"):
+                    with st.spinner("Analyzing Word document..."):
+                        start_time = time.perf_counter()
+
+                        question = (
+                            user_question
+                            if user_question
+                            else "Summarize the key points in this Word document."
+                        )
+
+                        word_brief = analyze_document(
+                            docx_text,
+                            question
+                        )
+
+                        processing_time = (
+                            time.perf_counter() - start_time
+                        )
+
+                    st.success("✅ Analysis Complete")
+
+                    sumcol1, sumcol2, sumcol3, sumcol4, sumcol5 = st.columns(5)
+
+                    with sumcol1:
+                        st.metric("File Type", "Word")
+
+                    with sumcol2:
+                        st.metric("Characters", len(docx_text))
+
+                    with sumcol3:
+                        st.metric("AI Model", MODEL)
+
+                    with sumcol4:
+                        st.metric(
+                            "Time",
+                            f"{processing_time:.1f}s"
+                        )
+
+                    with sumcol5:
+                        st.metric("Status", "Complete")
+
+                    with analysis_placeholder.container():
+
+                        st.markdown(
+                            "### 📋 Executive Analysis Report"
+                        )
+
+                        with st.container(border=True):
+                            st.markdown(
+                                format_report(word_brief)
+                            )
+
+                    st.download_button(
+                        label="Download Word Analysis",
+                        data=word_brief,
+                        file_name="analystai_word_analysis.txt",
+                        mime="text/plain"
+                    )
 
 else:
     st.info("Upload a CSV, Excel, or PDF file to begin analysis")
