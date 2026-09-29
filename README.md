@@ -153,7 +153,7 @@ The Streamlit interface includes:
 
 ### Structured Data
 
-![CSV Analysis](assets/moros-analystai-csv-analysis (2).png)
+![CSV Analysis](assets/moros-analystai-csv-analysis-2.png)
 
 1. Upload a CSV or Excel file.
 2. AnalystAI loads the dataset using Pandas.
@@ -166,7 +166,7 @@ The Streamlit interface includes:
 
 ### Documents
 
-![PDF Analysis](assets/moros-analystai-pdf-analysis (2).png)
+![PDF Analysis](assets/moros-analystai-pdf-analysis-2.png)
 
 1. Upload a PDF or Word document.
 2. AnalystAI extracts readable text from the document.
@@ -243,7 +243,7 @@ The application also includes safeguards for analytical edge cases such as:
 - Dirty or unusable numeric values
 - Extreme numeric values
 
-The final v1.0 release passed **27 automated tests** in the local test suite.
+The final v1.0 release passed **28 automated tests** in the local test suite.
 
 GitHub Actions runs automated validation on repository pushes and pull requests.
 
