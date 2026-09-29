@@ -273,13 +273,25 @@ def find_column_in_question(df: pd.DataFrame, question: str) -> Optional[str]:
 # AVERAGE
 # -------------
 
+# -------------
+# AVERAGE
+# -------------
+
 def calculate_average(df: pd.DataFrame, column: str) -> Optional[float]:
     if column not in df.columns:
         return None
 
+    cleaned_values = (
+        df[column]
+        .astype(str)
+        .str.replace("$", "", regex=False)
+        .str.replace(",", "", regex=False)
+        .str.strip()
+    )
+
     numeric_values = pd.to_numeric(
-        df[column],
-        errors= "coerce"
+        cleaned_values,
+        errors="coerce"
     )
 
     if numeric_values.notna().sum() == 0:

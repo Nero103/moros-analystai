@@ -2,152 +2,393 @@
 
 [![Moros AnalystAI CI](https://github.com/Nero103/analystai/actions/workflows/ci.yml/badge.svg)](https://github.com/Nero103/analystai/actions/workflows/ci.yml)
 
-Transform Data into Decisions.
 
-AI-Powered Business & Document Intelligence
+**Transform Data into Decisions.**
 
-![AnalystAI Home Page](assets/analystai-home.png)
+*AI-Powered Business & Document Intelligence*
 
-Moros AnalystAI is a local AI-powered data analysis tool that transforms CSV files into structured business insights using Streamlit and Ollama.
+![AnalystAI Home Page](assets/final-homepage-moros-analystai.png)
 
-It allows users to upload datasets, ask questions in natural language, and receive AI-generated analyst-style reports with downloadable outputs.
+Moros AnalystAI is a local AI-powered analytics application for analyzing structured business data and unstructured documents.
 
-## Development Status
+It supports **CSV, Excel (.xlsx), PDF, and Word (.docx)** files and allows users to ask questions in natural language, perform deterministic statistical analysis, generate evidence-backed insights, and create downloadable executive-style reports.
 
-Current Version: **v4.0 (In Development)**
+The application combines **Python/Pandas calculations with locally hosted large language models through Ollama**, allowing supported quantitative questions to be calculated deterministically while AI is used for interpretation, document analysis, and report generation.
 
-### Completed
-- ✅ CSV dataset analysis
-- ✅ PDF document analysis
-- ✅ Executive AI reporting
-- ✅ Evidence-backed responses
-- ✅ Confidence reporting
-- ✅ GitHub Actions Continuous Integration (CI)
-- ✅ Automated syntax validation
-- ✅ Automated testing with pytest
+---
 
-### Planned
-- 🚧 Excel (.xlsx) support
-- 🚧 Word (.docx) support
-- 🚧 Automatic chart generation
-- 🚧 Enhanced structured data retrieval
-- 🚧 Expanded automated test coverage
+## Project Status
+
+**Current Release: v1.0**
+
+Moros AnalystAI is a completed reference implementation and portfolio project.
+
+Active feature development has concluded. Future updates, if any, will focus primarily on maintenance, compatibility, and bug fixes rather than feature expansion.
+
+---
 
 ## Features
 
-### Business Intelligence
-* Analyze CSV datasets using AI
-* Automatically profile datasets (rows, columns, data types)
-* Detect missing values and summarize statistics
-* Ask natural language questions about data
-* Generate executive-style business insights
+### Structured Data Analysis
+
+Moros AnalystAI supports structured analysis of:
+
+- CSV files
+- Excel (.xlsx) workbooks
+- Individual Excel worksheets
+- Numeric and categorical business data
+
+Users can:
+
+- Preview uploaded datasets
+- Inspect rows, columns, and data types
+- Identify missing or unusable values
+- Ask natural-language questions about their data
+- Generate statistical profiles
+- Generate evidence-backed business interpretations
+- Download analysis reports
+
+### Deterministic Analytics
+
+Supported quantitative questions are calculated directly with Python and Pandas rather than relying on the language model to estimate or calculate the answer.
+
+Current deterministic analytics include:
+
+- Mean
+- Median
+- Minimum and maximum
+- Quartiles
+- Percentiles / quantiles
+- Standard deviation
+- Variance
+- Sum
+- Interquartile range (IQR)
+- Skewness
+- IQR-based outlier detection
+- Coefficient of variation
+- Pearson correlation
+- Covariance
+- Missing-value counts
+- Valid-record counts
+- Value distributions
+
+Numeric profiling also reports information such as data coverage, unusable values, sample size, variability, skewness, and potential outliers where applicable.
 
 ### Document Intelligence
-* Read and analyze PDF documents
-* Generate concise executive summaries
-* Answer questions using document content
-* Highlight key findings, risks, and recommendations
 
-### AI-Powered Analysis
-* Runs entirely with local LLMs using Ollama
-* Structured executive reports
-* Business-focused prompt engineering
-* Supports multiple local AI models
+Moros AnalystAI supports:
 
-### Modern Dashboard
-* Professional dark theme
-* Two-column analysis workspace
-* Executive report formatting
-* Analysis summary cards
-* Processing time metrics
-* Download analysis as a text report
+- PDF documents
+- Word (.docx) documents
 
-### Software Architecture
-* Modular Python architecture
-* Separate AI engine
-* PDF processing utilities
-* Configuration management
-* Built with Streamlit and Pandas
+Users can:
 
-## Tech Stack
+- Extract readable document text
+- Preview extracted content
+- Ask questions about document contents
+- Generate executive-style summaries
+- Identify key findings
+- Surface risks and recommendations
+- Generate evidence-backed responses
+- Download completed analysis reports
 
-* Python
-* Streamlit
-* Pandas
-* Ollama
-* Local Large Language Models (Qwen / Phi-3)
-* PyPDF
-* Git & GitHub
+### Local AI Analysis
 
-## Development Stack
+Moros AnalystAI integrates with **Ollama** to run compatible large language models locally.
 
-* **Language:** Python
-* **Framework:** Streamlit
-* **AI:** Ollama + Qwen 2.5
-* **Data:** Pandas
-* **Documents:** PyPDF
-* **Testing:** pytest
-* **Version Control:** Git & GitHub
-* **CI:** GitHub Actions
+The AI layer is used for tasks such as:
 
-## Why I Built Moros
+- Natural-language interpretation
+- Document question answering
+- Executive summaries
+- Business-focused analysis
+- Findings and recommendations
+- Structured report generation
 
-I built Moros AnalystAI to explore how Generative AI can improve business analytics and research workflows.
+The model can be changed through the application's configuration.
 
-The goal was to create a local AI application capable of analyzing structured (CSV) and unstructured (PDF) data while producing executive summaries and answering natural language questions.
+### Evidence & Confidence
 
-During the build, the project evolved from a simple CSV analyzer into a modular AI application focused on business intelligence, software engineering, and user experience.
+AnalystAI was designed around a simple principle:
+
+> Use deterministic calculations when the answer can be calculated, and use AI when interpretation is required.
+
+Where supported, responses provide evidence such as:
+
+- Calculated values
+- Record counts
+- Source passages
+- Analysis methodology
+- Confidence indicators
+
+This reduces dependence on the language model for calculations that can be performed directly in Python.
+
+### Dashboard
+
+The Streamlit interface includes:
+
+- Dark dashboard interface
+- File upload workspace
+- Dataset/document preview
+- Natural-language question input
+- Analysis summary metrics
+- Processing-time reporting
+- Executive report formatting
+- Downloadable text reports
+
+---
+
+## Supported File Types
+
+| Format | Analysis Type | Processing |
+| --- | --- | --- |
+| CSV | Structured data | Pandas |
+| Excel (.xlsx) | Structured data / worksheets | Pandas + openpyxl |
+| PDF | Document intelligence | PyPDF |
+| Word (.docx) | Document intelligence | python-docx |
+
+---
 
 ## How It Works
 
-![CSV Analysis](assets/analystai-csv-analysis.png)
-1. Upload a CSV file
-2. Dataset is processed using Pandas
-3. Summary + metadata is sent to a local AI model (Ollama)
-4. AI generates a structured analyst report
-5. User can download the final report
+### Structured Data
 
-![PDF Analysis](assets/analystai-pdf-analysis.png)
-1. Upload a PDF
-2. Document is processed using PdfReader
-3. Summary + metadata is sent to a local AI model (Ollama)
-4. AI generates a structured 8000 limit preview
-5. User can download the full final report
+![CSV Analysis](assets/moros-analystai-csv-analysis (2).png)
+
+1. Upload a CSV or Excel file.
+2. AnalystAI loads the dataset using Pandas.
+3. Excel workbooks can be analyzed by individual worksheet.
+4. The application profiles the dataset and identifies relevant columns.
+5. Supported statistical questions are routed to deterministic Python calculations.
+6. AI is used where interpretation or broader analysis is appropriate.
+7. Evidence and confidence information are included where supported.
+8. The completed analysis can be downloaded as a text report.
+
+### Documents
+
+![PDF Analysis](assets/moros-analystai-pdf-analysis (2).png)
+
+1. Upload a PDF or Word document.
+2. AnalystAI extracts readable text from the document.
+3. The user asks a natural-language question or requests a summary.
+4. Extracted document content is provided to the configured local AI model.
+5. AnalystAI generates a structured report using the available document evidence.
+6. The completed analysis can be downloaded.
+
+---
+
+## Architecture
+
+Moros AnalystAI separates file processing, deterministic analytics, AI analysis, configuration, and user-interface responsibilities.
+
+Core components include:
+
+- **Streamlit** — application interface
+- **Pandas** — structured data processing
+- **Python statistical functions** — deterministic calculations
+- **Ollama** — local LLM inference
+- **PyPDF** — PDF text extraction
+- **python-docx** — Word document extraction
+- **openpyxl** — Excel workbook support
+- **pytest** — automated testing
+- **GitHub Actions** — continuous integration
+
+This architecture allows deterministic calculations and generative AI to serve different roles rather than using an LLM for every analytical task.
+
+---
+
+## Tech Stack
+
+- Python
+- Streamlit
+- Pandas
+- NumPy
+- Ollama
+- Local Large Language Models
+- PyPDF
+- openpyxl
+- python-docx
+- pytest
+- Git
+- GitHub
+- GitHub Actions
+
+---
+
+## Testing & Reliability
+
+Moros AnalystAI includes automated testing for its analytics and file-processing functionality.
+
+The test suite covers areas including:
+
+- Deterministic statistical calculations
+- Numeric profiling
+- Excel workbook loading
+- Excel worksheet selection
+- Empty worksheets
+- Header-only worksheets
+- Invalid Excel files
+- Invalid worksheet selections
+- Word text extraction
+- Empty Word documents
+- Invalid Word documents
+
+The application also includes safeguards for analytical edge cases such as:
+
+- Constant numeric columns
+- All-zero values
+- Negative means when calculating coefficient of variation
+- Low data coverage
+- Small samples
+- Dirty or unusable numeric values
+- Extreme numeric values
+
+The final v1.0 release passed **27 automated tests** in the local test suite.
+
+GitHub Actions runs automated validation on repository pushes and pull requests.
+
+Run the test suite locally with:
+
+```bash
+python -m pytest -v
+```
+
+---
+
+## Privacy & Local Processing
+
+Moros AnalystAI is designed to support local AI processing through Ollama.
+
+When configured with a local Ollama model, document and dataset analysis can be performed without sending the analyzed content to a hosted LLM provider.
+
+This architecture may be useful for experimentation with workflows where local processing or greater control over data handling is preferred.
+
+Moros AnalystAI itself does not provide a hosted AI model. Users are responsible for installing Ollama and downloading a compatible model.
+
+---
+
+## Why I Built Moros
+
+I built Moros AnalystAI to explore how Generative AI can complement traditional business analytics and research workflows.
+
+The project began as a simple CSV analyzer but evolved into an experiment in separating two different analytical responsibilities:
+
+**Deterministic computation** for questions that software can calculate reliably, and **Generative AI** for interpretation, document analysis, and natural-language reporting.
+
+That development process expanded the project into a modular application supporting structured datasets and unstructured business documents while incorporating automated testing, continuous integration, evidence reporting, and local AI inference.
+
+---
 
 ## Installation & Setup
 
 ### 1. Clone the repository
+
 ```bash
-git clone https://github.com/YOUR_USERNAME/analystai.git
+git clone https://github.com/Nero103/analystai.git
 cd analystai
 ```
 
-### 2. Create virtual environment
+### 2. Create a virtual environment
+
 ```bash
 python -m venv venv
 ```
 
-### 3. For Windows
+### 3. Activate the environment
+
+#### Windows
+
 ```bash
 venv\Scripts\activate
 ```
 
-### 3. Install dependencies
+#### macOS / Linux
+
+```bash
+source venv/bin/activate
+```
+
+### 4. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Install and run Ollama
-Download Ollama then install the model
+### 5. Install Ollama
+
+Install Ollama separately and download a compatible local language model.
+
+For example:
+
 ```bash
-ollama pull phi3:mini
+ollama pull qwen2.5:1.5b
 ```
 
-### 5. Run the App
+Ensure the model configured in AnalystAI matches a model installed in Ollama.
+
+### 6. Run AnalystAI
+
 ```bash
 streamlit run app.py
 ```
 
+Open the local Streamlit address displayed in the terminal.
+
+---
+
+## Requirements
+
+The application requires:
+
+- Python
+- Ollama
+- A compatible Ollama language model
+- Dependencies listed in `requirements.txt`
+
+Performance and response quality depend on the selected language model and the hardware available to run it.
+
+---
+
+## Limitations
+
+Moros AnalystAI is a local reference implementation rather than a hosted commercial analytics platform.
+
+Current limitations include:
+
+- Ollama must be installed and configured separately.
+- Users must download and run a compatible local language model.
+- Local model performance depends on available hardware.
+- Generative interpretations may still contain errors and should be reviewed before being used for business decisions.
+- Deterministic analysis supports a defined set of statistical intents rather than arbitrary statistical procedures.
+- Document analysis depends on extractable text and may not capture information contained only in images or complex visual layouts.
+- The application does not provide collaborative cloud workspaces, enterprise authentication, or managed model infrastructure.
+
+---
+
+## v1.0 Scope
+
+The completed v1.0 release includes:
+
+- ✅ CSV analysis
+- ✅ Excel (.xlsx) analysis
+- ✅ Multi-sheet Excel support
+- ✅ PDF analysis
+- ✅ Word (.docx) analysis
+- ✅ Natural-language questions
+- ✅ Deterministic statistical analysis
+- ✅ Evidence-backed responses
+- ✅ Confidence reporting
+- ✅ Executive-style reporting
+- ✅ Downloadable reports
+- ✅ Local Ollama integration
+- ✅ Automated pytest suite
+- ✅ GitHub Actions CI
+- ✅ Input and edge-case handling
+
+---
+
 ## Author
 
-Moros AnalystAI was built by **[Nero103](https://github.com/Nero103)** as a portfolio project focused on AI-powered data analysis and analyst automation. PLEASE GIVE CREDIT
+Moros AnalystAI was built by **[Nero103](https://github.com/Nero103)** as a portfolio and reference project exploring local AI, business analytics, deterministic computation, and analyst automation.
+
+If you reuse or build upon this project, please provide appropriate credit.

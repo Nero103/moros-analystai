@@ -7,6 +7,7 @@ from data_utils import (
     calculate_coefficient_of_variation,
     calculate_correlation,
     calculate_covariance,
+    calculate_average,
 )
 
 def test_skewness_directions():
@@ -166,3 +167,12 @@ def test_positive_and_negative_covariance():
 
     assert positive == pytest.approx(2500.0)
     assert negative == pytest.approx(-2500.0)
+
+def test_average_handles_currency_formatted_values():
+    df = pd.DataFrame({
+        "Value (M)": ["$100.0", "$200.0", "$300.0"]
+    })
+
+    result = calculate_average(df, "Value (M)")
+
+    assert result == 200.0

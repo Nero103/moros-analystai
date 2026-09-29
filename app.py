@@ -100,7 +100,7 @@ st.caption("AI-Powered Business & Document Intelligence")
 st.divider()
 
 st.markdown("""
-Upload a **CSV**, **Excel workbook**, or **PDF**, ask a question in plain English, and receive structured executive insights from a local AI.
+Upload a **CSV**, **Excel workbook**, **PDF**, or **Word document** ask a question in plain English, and receive structured executive insights from a local AI.
 
 **Built for analysts, business, and decision-making.**
 """)
@@ -110,7 +110,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     with st.container(border= True):
         st.markdown("""
-        ### 📈 Business Inteligence\n\nAnalyze CSV datasets to uncover trends, anomalies, and business insights.
+        ### 📈 Business Intelligence\n\nAnalyze CSV datasets to uncover trends, anomalies, and business insights.
         
     Best for:
     - Sales reports
@@ -135,7 +135,7 @@ with col3:
         ### 💾 Executive Reporting\n\nGenerate structured reports that can be downloaded and shared.
         
     Outputs:
-    - Excutive summary
+    - Executive summary
     - Key findings
     - Recommendations
         """)
@@ -434,13 +434,14 @@ if uploaded_file is not None:
                     )
 
 else:
-    st.info("Upload a CSV, Excel, or PDF file to begin analysis")
+    st.info("Upload a CSV, Excel, PDF file, or Word document to begin analysis")
 
     st.markdown("""
     ### What Moros AnalystAI can do:
     - Analyze CSV datasets
     - Read Excel workbooks and worksheets
     - Summarize PDF documents
+    - Evaluate Word documents
     - Answer natural language questions
     - Generate analyst-style reports
     - Download results as text files
